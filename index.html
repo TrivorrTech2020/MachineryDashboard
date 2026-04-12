@@ -389,11 +389,11 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
         </div>
       </div>
       <div class="g2">
-        <div class="card"><div class="ct">By category</div><div class="cs">Vehicle / Machine / Equipment — from support sheet Col D</div><div id="ocat"></div></div>
-        <div class="card"><div class="ct">By VME type</div><div class="cs">From support sheet Col B</div><div id="ovme"></div></div>
+        <div class="card"><div class="ct">By category</div><div class="cs">Vehicle / Machine / Equipment breakdown</div><div id="ocat"></div></div>
+        <div class="card"><div class="ct">By VME type</div><div class="cs">By repair count</div><div id="ovme"></div></div>
       </div>
       <div class="g2">
-        <div class="card"><div class="ct">By model</div><div class="cs">From support sheet Col C — top 8</div><div id="omodel"></div></div>
+        <div class="card"><div class="ct">By model</div><div class="cs">Top 8 by repair count</div><div id="omodel"></div></div>
         <div class="card"><div class="ct">By location</div><div class="cs">From job card register</div><div id="oloc"></div></div>
       </div>
       <div class="gf card"><div class="ct">Monthly repair volume</div><div class="cs">Number of repairs per calendar month</div><div class="hm" id="ohm"></div><div class="hg" id="oheat"></div></div>
@@ -409,7 +409,7 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
       </div>
       <div class="gf card">
         <div class="ct">Machine risk register</div>
-        <div class="cs">5+ repairs · sorted by total days lost · running repairs only · VME type & model from support sheet</div>
+        <div class="cs">5+ repairs · sorted by total days lost · running repairs only</div>
         <div class="tw"><table><thead><tr>
           <th>Machine no.</th><th>Category</th><th>VME type</th><th>Model</th>
           <th style="text-align:right">Repairs</th><th style="text-align:right">Days lost</th>
@@ -418,8 +418,8 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
         </tr></thead><tbody id="mtbl"></tbody></table></div>
       </div>
       <div class="g2">
-        <div class="card"><div class="ct">Top VME types by repairs</div><div class="cs">Col B from support sheet</div><div id="mvme"></div></div>
-        <div class="card"><div class="ct">Top models by repairs</div><div class="cs">Col C from support sheet</div><div id="mmdl"></div></div>
+        <div class="card"><div class="ct">Top VME types by repairs</div><div class="cs">By repair count</div><div id="mvme"></div></div>
+        <div class="card"><div class="ct">Top models by repairs</div><div class="cs">By repair count</div><div id="mmdl"></div></div>
       </div>
     </div>
 
@@ -434,7 +434,7 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
       <div class="gf card"><div class="ct">Avg downtime per year</div><div class="cs">Improvement trend</div><svg id="dtrend" style="width:100%;display:block" viewBox="0 0 700 110"></svg></div>
       <div class="g2">
         <div class="card"><div class="ct">Duration buckets</div><div class="cs">How long repairs take to close</div><div id="dbkt"></div></div>
-        <div class="card"><div class="ct">Avg downtime by VME type</div><div class="cs">Col B from support sheet · mean days</div><div id="dvme"></div></div>
+        <div class="card"><div class="ct">Avg downtime by VME type</div><div class="cs">Mean days per repair</div><div id="dvme"></div></div>
       </div>
       <div class="g2">
         <div class="card"><div class="ct">Avg downtime by category</div><div class="cs">Vehicle / Machine / Equipment</div><div id="dcat"></div></div>
@@ -452,10 +452,10 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
       </div>
       <div class="g2">
         <div class="card"><div class="ct">Top machines by spend</div><div class="cs">Total recorded cost</div><div id="cmch"></div></div>
-        <div class="card"><div class="ct">Spend by VME type</div><div class="cs">Col B from support sheet</div><div id="cvme"></div></div>
+        <div class="card"><div class="ct">Spend by VME type</div><div class="cs">Total recorded cost</div><div id="cvme"></div></div>
       </div>
       <div class="g2">
-        <div class="card"><div class="ct">Spend by model</div><div class="cs">Col C from support sheet</div><div id="cmdl"></div></div>
+        <div class="card"><div class="ct">Spend by model</div><div class="cs">Total recorded cost</div><div id="cmdl"></div></div>
       </div>
       <div class="g2">
         <div class="card"><div class="ct">Most replaced parts</div><div class="cs">By frequency across all job cards</div><div id="cpts"></div></div>
@@ -473,7 +473,7 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
         <div class="kpi"><div class="kt" style="background:var(--pur)"></div><div class="kl">Quick-return rate</div><div class="kv" id="a3">—</div><div class="kd">back within 7 days</div></div>
       </div>
       <div class="gf card">
-        <div class="ct">Open job cards — aged</div><div class="cs">All currently open · sorted by age · VME type from support sheet</div>
+        <div class="ct">Open job cards — aged</div><div class="cs">All currently open · sorted by age</div>
         <div class="tw"><table><thead><tr>
           <th>Job card</th><th>Machine</th><th>Category</th><th>VME type</th>
           <th>Location</th><th>Supervisor</th>
