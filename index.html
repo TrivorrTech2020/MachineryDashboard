@@ -753,9 +753,18 @@ function rOverview(f) {
   const mtbf=gaps.length?gaps.reduce((s,g)=>s+g.g,0)/gaps.length:0;
   const qrPct=gaps.length?Math.round(gaps.filter(g=>g.g<=7).length/gaps.length*100):0;
 
+  const _vme=$('f-vme').value,_cat=$('f-cat').value,_mdl=$('f-model').value,_loc=$('f-loc').value;
+  const _activeFilters=[_vme!=='all'&&_vme,_cat!=='all'&&_cat,_mdl!=='all'&&_mdl,_loc!=='all'&&_loc].filter(Boolean);
+
   $('o1').textContent=f.length.toLocaleString();
   $('o2').textContent=openAll.length;
-  $('o2s').textContent=Math.round(openAll.length/Math.max(RAW.jcs.length,1)*100)+'% of total';
+  if(_activeFilters.length){
+    const openFiltered=f.filter(r=>(r.status||'').toLowerCase()==='open').length;
+    const lbl=_activeFilters.length===1?_activeFilters[0]:'filters';
+    $('o2s').textContent='of which '+openFiltered+' are '+lbl;
+  } else {
+    $('o2s').textContent=Math.round(openAll.length/Math.max(RAW.jcs.length,1)*100)+'% of total';
+  }
   $('o3').innerHTML=f1(avgDt)+' <span class="ku">days</span>';
   $('o3d').innerHTML=avgDt<4?'<span class="up">Good turnaround</span>':'<span class="dn">Review criticals</span>';
   $('o4').innerHTML=f1(mtbf)+' <span class="ku">days</span>';
