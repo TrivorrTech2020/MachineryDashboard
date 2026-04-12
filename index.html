@@ -53,7 +53,7 @@ nav{padding:12px 10px;flex:1}
 .main{padding:22px 28px;overflow-x:hidden;min-width:0}
 
 /* ── FILTER BAR ── */
-.fbar{background:var(--sur);border:1px solid var(--bor);border-radius:var(--r);padding:14px 18px;margin-bottom:18px}
+.fbar{background:var(--sur);border:1px solid var(--bor);border-radius:var(--r);padding:10px 16px;margin-bottom:18px}
 .fbar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap}
 .fbar-label{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--sub);font-family:var(--mono)}
 .fbar-stats{font-size:11px;color:var(--mut);font-family:var(--mono)}
@@ -270,15 +270,6 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 
     <!-- ══ FILTER BAR ══ -->
     <div class="fbar">
-      <div class="fbar-head">
-        <span class="fbar-label">Filters</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="fbar-stats" id="fstats">Loading…</span>
-          <button class="btn-refresh-icon" id="btn-refresh-icon" onclick="refreshData()" title="Refresh data">
-            <svg width="12" height="12" fill="none" viewBox="0 0 12 12"><path d="M10.5 6A4.5 4.5 0 1 1 6 1.5V.5M6 .5L8 2.5M6 .5L4 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </div>
-      </div>
       <div class="frow">
         <div class="fg">
           <label>Category</label>
@@ -355,6 +346,12 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
         </div>
         <div class="fbtn-row">
           <button class="btn-reset" onclick="resetFilters()">Reset</button>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-bottom:0">
+          <span class="fbar-stats" id="fstats">Loading…</span>
+          <button class="btn-refresh-icon" id="btn-refresh-icon" onclick="refreshData()" title="Refresh data">
+            <svg width="12" height="12" fill="none" viewBox="0 0 12 12"><path d="M10.5 6A4.5 4.5 0 1 1 6 1.5V.5M6 .5L8 2.5M6 .5L4 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
       </div>
     </div>
@@ -573,9 +570,16 @@ function renderDDList(id, q) {
   const opts = DD_OPTS[id] || [], cur = DD_STATE[id] || 'all';
   const filtered = q ? opts.filter(o => o.label.toLowerCase().includes(q.toLowerCase())) : opts;
   const el = $(id + '-list'); if (!el) return;
+  if (!filtered.length) {
+    el.innerHTML = '<div style="padding:8px 10px;font-size:11px;color:var(--mut)">No matches</div>';
+    return;
+  }
   el.innerHTML = filtered.map(o =>
-    `<div class="sdd-item${cur === o.value ? ' sel' : ''}" onclick="selectDD('${id}',${JSON.stringify(o.value)},${JSON.stringify(o.label)})">${o.label}</div>`
-  ).join('') || '<div style="padding:8px 10px;font-size:11px;color:var(--mut)">No matches</div>';
+    `<div class="sdd-item${cur === o.value ? ' sel' : ''}">${o.label}</div>`
+  ).join('');
+  el.querySelectorAll('.sdd-item').forEach((item, i) => {
+    item.addEventListener('click', () => selectDD(id, filtered[i].value, filtered[i].label));
+  });
 }
 function toggleDD(id) {
   const el = $(id), isOpen = el.classList.contains('open');
