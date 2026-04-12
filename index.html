@@ -53,30 +53,49 @@ nav{padding:12px 10px;flex:1}
 .main{padding:22px 28px;overflow-x:hidden;min-width:0}
 
 /* ── FILTER BAR ── */
-.fbar{background:var(--sur);border:1px solid var(--bor);border-radius:var(--r);padding:16px 18px;margin-bottom:18px}
-.fbar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap}
+.fbar{background:var(--sur);border:1px solid var(--bor);border-radius:var(--r);padding:14px 18px;margin-bottom:18px}
+.fbar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap}
 .fbar-label{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--sub);font-family:var(--mono)}
 .fbar-stats{font-size:11px;color:var(--mut);font-family:var(--mono)}
-.fbar-rows{display:flex;flex-direction:column;gap:10px}
 .frow{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
 .fg{display:flex;flex-direction:column;gap:4px;min-width:0}
 .fg label{font-size:9px;color:var(--mut);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
-.fsel{background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);padding:6px 10px;font-size:12px;color:var(--txt);cursor:pointer;font-family:var(--sans);outline:none;-webkit-appearance:none;height:32px;min-width:130px}
-.fsel:focus{border-color:var(--acc)}
-.fdate{background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);padding:5px 10px;font-size:12px;color:var(--txt);font-family:var(--sans);outline:none;height:32px;color-scheme:dark;min-width:130px}
+.fdate{background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);padding:5px 8px;font-size:12px;color:var(--txt);font-family:var(--sans);outline:none;height:32px;color-scheme:dark;width:130px}
 .fdate:focus{border-color:var(--acc)}
-.fsep{font-size:11px;color:var(--mut);padding-bottom:8px;white-space:nowrap}
-/* quick date buttons */
-.qdiv{display:flex;flex-direction:column;gap:4px}
-.qlbl{font-size:9px;color:var(--mut);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
-.qrow{display:flex;gap:4px;flex-wrap:wrap}
-.qb{background:var(--sur2);border:1px solid var(--bor);border-radius:4px;padding:4px 9px;font-size:11px;color:var(--sub);cursor:pointer;font-family:var(--mono);transition:all .15s;white-space:nowrap;height:32px;display:flex;align-items:center}
+/* searchable dropdown */
+.sdd{position:relative;min-width:130px}
+.sdd-trigger{background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);padding:0 10px;height:32px;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;font-size:12px;color:var(--txt);user-select:none;transition:border-color .15s;white-space:nowrap}
+.sdd-trigger:hover,.sdd.open .sdd-trigger{border-color:var(--acc)}
+.sdd-chevron{flex-shrink:0;opacity:.5;transition:transform .15s}
+.sdd.open .sdd-chevron{transform:rotate(180deg)}
+.sdd-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.45);overflow:hidden}
+.sdd.open .sdd-panel{display:block}
+.sdd-search{width:100%;background:transparent;border:none;border-bottom:1px solid var(--bor);padding:7px 10px;font-size:12px;color:var(--txt);font-family:var(--sans);outline:none}
+.sdd-search::placeholder{color:var(--mut)}
+.sdd-list{max-height:200px;overflow-y:auto}
+.sdd-item{padding:7px 10px;font-size:12px;cursor:pointer;color:var(--sub);transition:background .1s;white-space:nowrap}
+.sdd-item:hover{background:var(--sur);color:var(--txt)}
+.sdd-item.sel{color:var(--acc);background:rgba(59,130,246,.08)}
+/* date range popover */
+.drng{position:relative}
+.drng-trigger{background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);padding:0 10px;height:32px;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--txt);white-space:nowrap;transition:border-color .15s;font-family:var(--sans);user-select:none}
+.drng-trigger:hover,.drng.open .drng-trigger{border-color:var(--acc)}
+.drng-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--sur2);border:1px solid var(--bor);border-radius:var(--r);z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.45);padding:14px;min-width:300px}
+.drng.open .drng-panel{display:block}
+.drng-sep{font-size:9px;color:var(--mut);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.drng-qrow{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.drng-dates{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* quick buttons */
+.qb{background:var(--sur);border:1px solid var(--bor);border-radius:4px;padding:4px 9px;font-size:11px;color:var(--sub);cursor:pointer;font-family:var(--mono);transition:all .15s;white-space:nowrap;height:28px;display:flex;align-items:center}
 .qb:hover{border-color:var(--acc);color:var(--acc)}
 .qb.on{background:rgba(59,130,246,.14);border-color:var(--acc);color:var(--acc)}
 /* action buttons */
 .fbtn-row{display:flex;gap:6px;align-items:center;padding-bottom:0}
 .btn-reset{background:transparent;border:1px solid var(--bor);border-radius:var(--rs);padding:0 12px;font-size:11px;color:var(--sub);cursor:pointer;font-family:var(--mono);height:32px;transition:all .15s}
 .btn-reset:hover{border-color:var(--red);color:var(--red)}
+.btn-refresh-icon{background:transparent;border:1px solid var(--bor);border-radius:var(--rs);width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--sub);transition:all .15s;flex-shrink:0;padding:0}
+.btn-refresh-icon:hover{border-color:var(--acc);color:var(--acc)}
+.btn-refresh-icon.spinning svg{animation:spin .7s linear infinite}
 .btn-refresh{background:var(--acc);border:none;border-radius:var(--rs);padding:0 14px;font-size:12px;color:#fff;cursor:pointer;font-family:var(--sans);font-weight:500;height:32px;display:flex;align-items:center;gap:5px;transition:opacity .15s}
 .btn-refresh:hover{opacity:.85}
 
@@ -173,7 +192,7 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
   .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);width:var(--sw);height:100vh}
   .sidebar.open{transform:translateX(0)}
   .main{padding:14px}
-  .fsel,.fdate{min-width:100px;font-size:11px}
+  .sdd,.drng{font-size:11px}
   .kg.c4,.kg.c5,.kg.c3{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .kpi{padding:12px 14px}.kv{font-size:20px}
   .g2{grid-template-columns:1fr;gap:10px}
@@ -184,8 +203,8 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 @media(max-width:480px){
   .kv{font-size:17px}
   .frow{flex-direction:column;align-items:stretch}
-  .fsel,.fdate{min-width:0;width:100%}
-  .qrow{gap:3px}
+  .sdd,.drng,.fdate{min-width:0;width:100%}
+  .drng-panel{min-width:0;width:calc(100vw - 32px)}
 }
 </style>
 </head>
@@ -202,7 +221,7 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 <div class="mob">
   <button class="hbg" onclick="toggleSB()"><span></span><span></span><span></span></button>
   <span class="mob-t">SGF Workshop</span>
-  <button class="btn-refresh" style="font-size:11px;padding:0 10px;height:30px" onclick="loadData()">Refresh</button>
+  <button class="btn-refresh-icon" onclick="refreshData()" title="Refresh data" style="width:30px;height:30px"><svg width="12" height="12" fill="none" viewBox="0 0 12 12"><path d="M10.5 6A4.5 4.5 0 1 1 6 1.5V.5M6 .5L8 2.5M6 .5L4 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </div>
 
 <div class="shell" id="app" style="display:none">
@@ -249,74 +268,89 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
     <div class="fbar">
       <div class="fbar-head">
         <span class="fbar-label">Filters</span>
-        <span class="fbar-stats" id="fstats">Loading…</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="fbar-stats" id="fstats">Loading…</span>
+          <button class="btn-refresh-icon" id="btn-refresh-icon" onclick="refreshData()" title="Refresh data">
+            <svg width="12" height="12" fill="none" viewBox="0 0 12 12"><path d="M10.5 6A4.5 4.5 0 1 1 6 1.5V.5M6 .5L8 2.5M6 .5L4 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
       </div>
-      <div class="fbar-rows">
-        <!-- Row 1: Category, VME Type, Model, Location -->
-        <div class="frow">
-          <div class="fg">
-            <label>Category (type)</label>
-            <select class="fsel" id="f-cat" onchange="onFilterChange()">
-              <option value="all">All categories</option>
-              <option value="Vehicle">Vehicle</option>
-              <option value="Machine">Machine</option>
-              <option value="Equipment">Equipment</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>VME type</label>
-            <select class="fsel" id="f-vme" onchange="onFilterChange()">
-              <option value="all">All VME types</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>Model</label>
-            <select class="fsel" id="f-model" onchange="onFilterChange()">
-              <option value="all">All models</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>Location</label>
-            <select class="fsel" id="f-loc" onchange="onFilterChange()">
-              <option value="all">All locations</option>
-            </select>
-          </div>
-          <div class="fbtn-row">
-            <button class="btn-reset" onclick="resetFilters()">Reset</button>
-            <button class="btn-refresh" onclick="loadData()">
-              <svg width="11" height="11" fill="none" viewBox="0 0 11 11"><path d="M9.5 5.5A4 4 0 1 1 5.5 1.5V.5M5.5.5L7.5 2.5M5.5.5L3.5 2.5" stroke="#fff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Refresh
-            </button>
+      <div class="frow">
+        <div class="fg">
+          <label>Category</label>
+          <div class="sdd" id="dd-cat">
+            <div class="sdd-trigger" onclick="toggleDD('dd-cat')">
+              <span class="sdd-val">All categories</span>
+              <svg class="sdd-chevron" width="10" height="10" fill="none" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="sdd-panel"><input class="sdd-search" placeholder="Search…" oninput="filterDD('dd-cat',this.value)"><div class="sdd-list" id="dd-cat-list"></div></div>
           </div>
         </div>
-        <!-- Row 2: Date filters -->
-        <div class="frow" style="align-items:center">
-          <div class="qdiv">
-            <div class="qlbl">Quick select</div>
-            <div class="qrow" id="qbtns">
-              <button class="qb" onclick="quickDate('ytd')">YTD</button>
-              <button class="qb" onclick="quickDate('2025')">2025</button>
-              <button class="qb" onclick="quickDate('2024')">2024</button>
-              <button class="qb" onclick="quickDate('2023')">2023</button>
-              <button class="qb" onclick="quickDate('2022')">2022</button>
-              <button class="qb" onclick="quickDate('q1')">Q1</button>
-              <button class="qb" onclick="quickDate('q2')">Q2</button>
-              <button class="qb" onclick="quickDate('q3')">Q3</button>
-              <button class="qb" onclick="quickDate('q4')">Q4</button>
-              <button class="qb" onclick="quickDate('l3m')">Last 3M</button>
-              <button class="qb" onclick="quickDate('l6m')">Last 6M</button>
-              <button class="qb on" onclick="quickDate('all')">All time</button>
+        <div class="fg">
+          <label>VME type</label>
+          <div class="sdd" id="dd-vme">
+            <div class="sdd-trigger" onclick="toggleDD('dd-vme')">
+              <span class="sdd-val">All VME types</span>
+              <svg class="sdd-chevron" width="10" height="10" fill="none" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="sdd-panel"><input class="sdd-search" placeholder="Search…" oninput="filterDD('dd-vme',this.value)"><div class="sdd-list" id="dd-vme-list"></div></div>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Model</label>
+          <div class="sdd" id="dd-model">
+            <div class="sdd-trigger" onclick="toggleDD('dd-model')">
+              <span class="sdd-val">All models</span>
+              <svg class="sdd-chevron" width="10" height="10" fill="none" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="sdd-panel"><input class="sdd-search" placeholder="Search…" oninput="filterDD('dd-model',this.value)"><div class="sdd-list" id="dd-model-list"></div></div>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Location</label>
+          <div class="sdd" id="dd-loc">
+            <div class="sdd-trigger" onclick="toggleDD('dd-loc')">
+              <span class="sdd-val">All locations</span>
+              <svg class="sdd-chevron" width="10" height="10" fill="none" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="sdd-panel"><input class="sdd-search" placeholder="Search…" oninput="filterDD('dd-loc',this.value)"><div class="sdd-list" id="dd-loc-list"></div></div>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Date range</label>
+          <div class="drng" id="drng">
+            <button class="drng-trigger" onclick="toggleDatePanel()">
+              <svg width="11" height="11" fill="none" viewBox="0 0 11 11"><rect x="1" y="2" width="9" height="8" rx="1" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5" x2="10" y2="5" stroke="currentColor" stroke-width="1.2"/><line x1="3.5" y1="1" x2="3.5" y2="3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="7.5" y1="1" x2="7.5" y2="3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+              <span id="drng-label">All time</span>
+              <svg class="sdd-chevron" width="10" height="10" fill="none" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="drng-panel" id="drng-panel">
+              <div class="drng-sep">Quick select</div>
+              <div class="drng-qrow" id="qbtns">
+                <button class="qb" onclick="quickDate('ytd')">YTD</button>
+                <button class="qb" onclick="quickDate('2025')">2025</button>
+                <button class="qb" onclick="quickDate('2024')">2024</button>
+                <button class="qb" onclick="quickDate('2023')">2023</button>
+                <button class="qb" onclick="quickDate('2022')">2022</button>
+                <button class="qb" onclick="quickDate('q1')">Q1</button>
+                <button class="qb" onclick="quickDate('q2')">Q2</button>
+                <button class="qb" onclick="quickDate('q3')">Q3</button>
+                <button class="qb" onclick="quickDate('q4')">Q4</button>
+                <button class="qb" onclick="quickDate('l3m')">Last 3M</button>
+                <button class="qb" onclick="quickDate('l6m')">Last 6M</button>
+                <button class="qb on" onclick="quickDate('all')">All time</button>
+              </div>
+              <div class="drng-sep">Custom range</div>
+              <div class="drng-dates">
+                <input type="date" class="fdate" id="f-from" onchange="onDateChange()">
+                <span style="color:var(--mut);font-size:11px">→</span>
+                <input type="date" class="fdate" id="f-to" onchange="onDateChange()">
+              </div>
             </div>
           </div>
-          <div class="fg" style="margin-left:8px">
-            <label>From</label>
-            <input type="date" class="fdate" id="f-from" onchange="onDateChange()">
-          </div>
-          <div class="fsep">→</div>
-          <div class="fg">
-            <label>To</label>
-            <input type="date" class="fdate" id="f-to" onchange="onDateChange()">
-          </div>
+        </div>
+        <div class="fbtn-row">
+          <button class="btn-reset" onclick="resetFilters()">Reset</button>
         </div>
       </div>
     </div>
@@ -464,10 +498,62 @@ let RAW = { db:[], ss:[], jcs:[] };
 let D   = { repairs:[], parts:[], ssMap:{} };
 // Date range state
 let dateFrom = null, dateTo = null, activeQuick = 'all';
+// Searchable dropdown state
+const DD_OPTS  = {};
+const DD_STATE = { 'dd-cat':'all', 'dd-vme':'all', 'dd-model':'all', 'dd-loc':'all' };
 
 // ══ UTILS ══
 const $ = id => document.getElementById(id);
 const prog = p => $('lbar').style.width = p + '%';
+
+// ══ SEARCHABLE DROPDOWN ══
+function populateDD(id, options) {
+  DD_OPTS[id] = options;
+  const cur = DD_STATE[id] || 'all';
+  if (cur !== 'all' && !options.find(o => o.value === cur)) {
+    DD_STATE[id] = 'all';
+    const vEl = $(id) && $(id).querySelector('.sdd-val');
+    if (vEl && options[0]) vEl.textContent = options[0].label;
+  }
+  renderDDList(id, '');
+}
+function renderDDList(id, q) {
+  const opts = DD_OPTS[id] || [], cur = DD_STATE[id] || 'all';
+  const filtered = q ? opts.filter(o => o.label.toLowerCase().includes(q.toLowerCase())) : opts;
+  const el = $(id + '-list'); if (!el) return;
+  el.innerHTML = filtered.map(o =>
+    `<div class="sdd-item${cur === o.value ? ' sel' : ''}" onclick="selectDD('${id}',${JSON.stringify(o.value)},${JSON.stringify(o.label)})">${o.label}</div>`
+  ).join('') || '<div style="padding:8px 10px;font-size:11px;color:var(--mut)">No matches</div>';
+}
+function toggleDD(id) {
+  const el = $(id), isOpen = el.classList.contains('open');
+  closeAllPanels();
+  if (!isOpen) {
+    el.classList.add('open');
+    const inp = el.querySelector('.sdd-search');
+    if (inp) { inp.value = ''; inp.focus(); renderDDList(id, ''); }
+  }
+}
+function filterDD(id, q) { renderDDList(id, q); }
+function selectDD(id, value, label) {
+  DD_STATE[id] = value;
+  const vEl = $(id) && $(id).querySelector('.sdd-val');
+  if (vEl) vEl.textContent = label;
+  closeAllPanels();
+  onFilterChange();
+}
+function toggleDatePanel() {
+  const drng = $('drng'), isOpen = drng.classList.contains('open');
+  closeAllPanels();
+  if (!isOpen) drng.classList.add('open');
+}
+function closeAllPanels() {
+  document.querySelectorAll('.sdd.open').forEach(d => d.classList.remove('open'));
+  const drng = $('drng'); if (drng) drng.classList.remove('open');
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.sdd') && !e.target.closest('.drng')) closeAllPanels();
+});
 
 function parseCSV(t) {
   const lines = t.trim().split('\n'), hdr = csvRow(lines[0]);
@@ -504,6 +590,27 @@ async function fetchCSV(id, gid) {
   const r = await fetch(url);
   if(!r.ok) throw new Error(`HTTP ${r.status} — is the sheet public (Share → Anyone with link → Viewer)?`);
   return parseCSV(await r.text());
+}
+
+async function refreshData() {
+  const btn = $('btn-refresh-icon');
+  if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+  $('sdot').classList.add('pulse');
+  $('slbl').textContent = 'Refreshing…';
+  try {
+    RAW.jcs = await fetchCSV(JC_ID, JC_GID);
+    RAW.ss  = await fetchCSV(LB_ID, SS_GID);
+    RAW.db  = await fetchCSV(LB_ID, LB_GID);
+    processData();
+    buildSupportMap();
+    buildFilters();
+    applyFilters();
+    $('slbl').textContent = 'Live · ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    $('slbl').textContent = 'Refresh failed';
+  }
+  if (btn) { btn.classList.remove('spinning'); btn.disabled = false; }
+  $('sdot').classList.remove('pulse');
 }
 
 async function loadData() {
@@ -619,23 +726,18 @@ function processData() {
 
 // ══ FILTER BUILD ══
 function buildFilters() {
-  // VME Type dropdown — from support sheet
+  populateDD('dd-cat', [
+    {value:'all',label:'All categories'},
+    {value:'Vehicle',label:'Vehicle'},
+    {value:'Machine',label:'Machine'},
+    {value:'Equipment',label:'Equipment'},
+  ]);
   const vmeTypes = [...new Set(D.repairs.map(r=>r.vmeType).filter(Boolean))].sort();
-  const fvme = $('f-vme');
-  fvme.innerHTML = '<option value="all">All VME types</option>';
-  vmeTypes.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; fvme.appendChild(o); });
-
-  // Model dropdown — from support sheet
+  populateDD('dd-vme', [{value:'all',label:'All VME types'},...vmeTypes.map(t=>({value:t,label:t}))]);
   const models = [...new Set(D.repairs.map(r=>r.model).filter(Boolean))].sort();
-  const fmdl = $('f-model');
-  fmdl.innerHTML = '<option value="all">All models</option>';
-  models.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; fmdl.appendChild(o); });
-
-  // Location dropdown — from JCS
+  populateDD('dd-model', [{value:'all',label:'All models'},...models.map(m=>({value:m,label:m}))]);
   const locs = [...new Set(D.repairs.map(r=>r.loc).filter(Boolean))].sort();
-  const floc = $('f-loc');
-  floc.innerHTML = '<option value="all">All locations</option>';
-  locs.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; floc.appendChild(o); });
+  populateDD('dd-loc', [{value:'all',label:'All locations'},...locs.map(l=>({value:l,label:l}))]);
 }
 
 // ══ DATE QUICK SELECT ══
@@ -659,6 +761,9 @@ function quickDate(key) {
   // Sync date inputs
   $('f-from').value = dateFrom ? isoDate(dateFrom) : '';
   $('f-to').value   = dateTo   ? isoDate(dateTo)   : '';
+  const _ql={'all':'All time','ytd':'YTD','l3m':'Last 3M','l6m':'Last 6M','q1':'Q1','q2':'Q2','q3':'Q3','q4':'Q4'};
+  $('drng-label').textContent = _ql[key] || (/^\d{4}$/.test(key) ? key : key);
+  $('drng').classList.remove('open');
   applyFilters();
 }
 
@@ -666,27 +771,33 @@ function onDateChange() {
   const fv = $('f-from').value, tv = $('f-to').value;
   dateFrom = fv ? new Date(fv) : null;
   dateTo   = tv ? new Date(tv+'T23:59:59') : null;
-  // Deactivate quick buttons when custom date used
   activeQuick = 'custom';
   document.querySelectorAll('.qb').forEach(b=>b.classList.remove('on'));
+  const lbl = fv && tv ? fv.slice(0,7)+' → '+tv.slice(0,7) : fv ? 'From '+fv.slice(0,7) : tv ? 'To '+tv.slice(0,7) : 'Custom';
+  $('drng-label').textContent = lbl;
   applyFilters();
 }
 
 function onFilterChange() { applyFilters(); }
 
 function resetFilters() {
-  $('f-cat').value='all'; $('f-vme').value='all';
-  $('f-model').value='all'; $('f-loc').value='all';
+  ['dd-cat','dd-vme','dd-model','dd-loc'].forEach(id => {
+    DD_STATE[id] = 'all';
+    const vEl = $(id) && $(id).querySelector('.sdd-val');
+    if (vEl && DD_OPTS[id]) vEl.textContent = DD_OPTS[id][0].label;
+    renderDDList(id, '');
+  });
   $('f-from').value=''; $('f-to').value='';
   dateFrom=null; dateTo=null; activeQuick='all';
   document.querySelectorAll('.qb').forEach(b=>b.classList.remove('on'));
   document.querySelector('.qb:last-child').classList.add('on');
+  $('drng-label').textContent='All time';
   applyFilters();
 }
 
 function getFiltered() {
-  const cat=$('f-cat').value, vme=$('f-vme').value,
-        mdl=$('f-model').value, loc=$('f-loc').value;
+  const cat=DD_STATE['dd-cat']||'all', vme=DD_STATE['dd-vme']||'all',
+        mdl=DD_STATE['dd-model']||'all', loc=DD_STATE['dd-loc']||'all';
   return D.repairs.filter(r => {
     if(cat!=='all' && r.category!==cat) return false;
     if(vme!=='all' && r.vmeType!==vme) return false;
@@ -753,7 +864,7 @@ function rOverview(f) {
   const mtbf=gaps.length?gaps.reduce((s,g)=>s+g.g,0)/gaps.length:0;
   const qrPct=gaps.length?Math.round(gaps.filter(g=>g.g<=7).length/gaps.length*100):0;
 
-  const _vme=$('f-vme').value,_cat=$('f-cat').value,_mdl=$('f-model').value,_loc=$('f-loc').value;
+  const _vme=DD_STATE['dd-vme']||'all',_cat=DD_STATE['dd-cat']||'all',_mdl=DD_STATE['dd-model']||'all',_loc=DD_STATE['dd-loc']||'all';
   const _activeFilters=[_vme!=='all'&&_vme,_cat!=='all'&&_cat,_mdl!=='all'&&_mdl,_loc!=='all'&&_loc].filter(Boolean);
 
   $('o1').textContent=f.length.toLocaleString();
