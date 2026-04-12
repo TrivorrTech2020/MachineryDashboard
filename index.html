@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SGF Workshop Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f1117;--surface:#161b27;--surface2:#1e2535;--border:#2a3348;
+  --accent:#3b82f6;--green:#10b981;--amber:#f59e0b;--red:#ef4444;--purple:#8b5cf6;
+  --text:#e2e8f0;--muted:#64748b;--subtle:#94a3b8;
+  --mono:'IBM Plex Mono',monospace;--sans:'DM Sans',sans-serif;
+  --r:10px;--rs:6px;--sw:220px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:16px;transition:opacity .3s}
+#loading.out{opacity:0;pointer-events:none}
+.ring{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#lmsg{color:var(--muted);font-family:var(--mono);font-size:12px;text-align:center;max-width:300px;line-height:1.6}
+#lprog{width:200px;height:2px;background:var(--border);border-radius:2px;overflow:hidden}
+#lbar{height:100%;background:var(--accent);width:0%;transition:width .5s ease;border-radius:2px}
+
+/* MOBILE TOPBAR */
+.mob-bar{display:none;align-items:center;gap:12px;padding:13px 16px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+.hbg{background:none;border:none;color:var(--text);cursor:pointer;padding:4px;display:flex;flex-direction:column;gap:4px}
+.hbg span{display:block;width:20px;height:1.5px;background:currentColor;border-radius:2px}
+.mob-title{font-size:14px;font-weight:600;flex:1}
+
+/* SHELL */
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;transition:transform .25s;z-index:100}
+.logo{padding:20px 20px 18px;border-bottom:1px solid var(--border)}
+.logo-lock{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.ldot{width:9px;height:9px;border-radius:50%}
+.lname{font-size:14px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.lsub{font-size:10px;color:var(--muted);font-family:var(--mono)}
+nav{padding:12px 10px;flex:1}
+.nsec{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:0 8px;margin:14px 0 5px}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rs);cursor:pointer;color:var(--subtle);font-size:13px;transition:all .15s;margin-bottom:1px;border:none;background:none;width:100%;text-align:left}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.active{background:rgba(59,130,246,.14);color:var(--accent)}
+.nic{width:15px;height:15px;flex-shrink:0;opacity:.7}
+.sfooter{padding:14px 20px;border-top:1px solid var(--border);margin-top:auto}
+.sbadge{display:flex;align-items:center;gap:6px;font-size:10px;font-family:var(--mono);color:var(--muted)}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+.sdot.spin{background:var(--amber);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99}
+.ov.show{display:block}
+
+/* MAIN */
+.main{padding:26px 28px;overflow-x:hidden;min-width:0}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.ph{font-size:20px;font-weight:600;line-height:1.2}
+.ps{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:3px}
+.ctrls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:7px 10px;font-size:12px;color:var(--text);cursor:pointer;font-family:var(--sans);outline:none;-webkit-appearance:none;min-width:110px}
+select:focus{border-color:var(--accent)}
+.btn{background:var(--accent);border:none;border-radius:var(--rs);padding:7px 14px;font-size:12px;color:#fff;cursor:pointer;font-family:var(--sans);font-weight:500;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btng{background:transparent;border:1px solid var(--border);color:var(--subtle)}
+.btng:hover{background:var(--surface2);opacity:1}
+
+/* PAGES */
+.page{display:none;animation:fi .2s ease}
+.page.active{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* KPI */
+.kg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.kg.c5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.kg.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden}
+.kt{position:absolute;top:0;left:0;right:0;height:2px}
+.kl{font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.kv{font-size:24px;font-weight:600;color:var(--text);line-height:1;font-family:var(--mono)}
+.ku{font-size:13px;font-weight:400;color:var(--muted)}
+.kd{font-size:11px;margin-top:6px;color:var(--muted);line-height:1.4}
+.up{color:var(--green)}.dn{color:var(--red)}
+
+/* CARDS & GRIDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px}
+.ct{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--subtle);margin-bottom:3px;font-family:var(--mono)}
+.cs{font-size:11px;color:var(--muted);margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.gf{margin-bottom:14px}
+
+/* BARS */
+.br{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.bl{font-size:11px;color:var(--subtle);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100px}
+.bk{flex:1;background:var(--surface2);border-radius:3px;height:8px;min-width:0}
+.bf{height:8px;border-radius:3px;transition:width .6s cubic-bezier(.16,1,.3,1);min-width:2px}
+.bv{font-size:11px;color:var(--muted);font-family:var(--mono);width:52px;text-align:right;flex-shrink:0}
+
+/* TABLES */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:480px}
+thead th{font-size:9px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:0 10px 10px 0;text-align:left;border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap}
+tbody td{padding:8px 10px 8px 0;color:var(--subtle);border-bottom:1px solid var(--border);vertical-align:middle}
+tbody td:first-child{color:var(--text);font-weight:500;font-family:var(--mono);font-size:11px}
+tbody td.n{text-align:right;font-family:var(--mono);color:var(--text);font-weight:500}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.02)}
+
+/* BADGES */
+.b{display:inline-block;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:600;font-family:var(--mono);white-space:nowrap}
+.br2{background:rgba(239,68,68,.14);color:#fca5a5}
+.bam{background:rgba(245,158,11,.14);color:#fcd34d}
+.bgr{background:rgba(16,185,129,.14);color:#6ee7b7}
+.bbl{background:rgba(59,130,246,.14);color:#93c5fd}
+.bpu{background:rgba(139,92,246,.14);color:#c4b5fd}
+
+/* DONUT */
+.dw{display:flex;align-items:center;gap:18px}
+.dl{flex:1;min-width:0}
+.dli{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.dld{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.dln{font-size:12px;color:var(--subtle);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlv{font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono)}
+
+/* SPARK */
+.sw2{display:flex;align-items:flex-end;gap:3px;height:50px}
+.sb{flex:1;border-radius:2px 2px 0 0;min-height:3px}
+.sl{display:flex;gap:3px;margin-top:4px}
+.sli{flex:1;font-size:9px;color:var(--muted);text-align:center;font-family:var(--mono)}
+
+/* PILLS */
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--subtle);font-family:var(--mono);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.pill b{color:var(--text);font-weight:500}
+
+/* HEAT */
+.hm{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-bottom:4px}
+.hmn{font-size:9px;color:var(--muted);text-align:center;font-family:var(--mono)}
+.hg{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
+.hc{border-radius:3px;height:28px;display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono)}
+
+/* ALERTS */
+.al{display:flex;flex-direction:column;gap:8px}
+.ai{border-left:3px solid;padding:10px 14px;border-radius:0 var(--rs) var(--rs) 0}
+.ared{border-left-color:var(--red);background:rgba(239,68,68,.07)}
+.aam{border-left-color:var(--amber);background:rgba(245,158,11,.07)}
+.agr{border-left-color:var(--green);background:rgba(16,185,129,.07)}
+.att{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.atb{font-size:11px;color:var(--muted);line-height:1.5}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .mob-bar{display:flex}
+  .shell{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);width:var(--sw);height:100vh}
+  .sidebar.open{transform:translateX(0)}
+  .main{padding:14px}
+  .topbar{margin-bottom:12px}
+  .ph{font-size:17px}
+  .ctrls select{min-width:85px;font-size:11px;padding:6px 8px}
+  .kg,.kg.c5,.kg.c3{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .kpi{padding:12px 14px}.kv{font-size:20px}
+  .g2{grid-template-columns:1fr;gap:10px}
+  .card{padding:14px}
+  .bl{width:80px;font-size:10px}.bv{width:44px;font-size:10px}
+  .pill{font-size:10px;padding:4px 9px}
+  .hc{height:22px;font-size:8px}
+}
+@media(max-width:380px){.kv{font-size:17px}.ctrls select{min-width:70px;font-size:10px}}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="ring"></div>
+  <div id="lprog"><div id="lbar"></div></div>
+  <p id="lmsg">Connecting to Google Sheets…</p>
+</div>
+
+<div id="ov" class="ov" onclick="closeSB()"></div>
+
+<div class="mob-bar">
+  <button class="hbg" onclick="toggleSB()"><span></span><span></span><span></span></button>
+  <span class="mob-title">SGF Workshop</span>
+  <button class="btn btng" style="font-size:11px;padding:5px 10px" onclick="loadData()">Refresh</button>
+</div>
+
+<div class="shell" id="app" style="display:none">
+  <aside class="sidebar" id="sb">
+    <div class="logo">
+      <div class="logo-lock">
+        <div class="ldot" style="background:#3b82f6"></div>
+        <div class="ldot" style="background:#10b981;margin-left:-3px"></div>
+        <span class="lname">SGF</span>
+      </div>
+      <div class="lsub">Workshop Intelligence</div>
+    </div>
+    <nav>
+      <div class="nsec">Dashboards</div>
+      <button class="ni active" onclick="showPage('overview',this)">
+        <svg class="nic" fill="none" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="1" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="9" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="6" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/></svg>
+        Overview
+      </button>
+      <button class="ni" onclick="showPage('machines',this)">
+        <svg class="nic" fill="none" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><line x1="8" y1="1.5" x2="8" y2="4.5" stroke="currentColor" stroke-width="1.3"/><line x1="8" y1="11.5" x2="8" y2="14.5" stroke="currentColor" stroke-width="1.3"/><line x1="1.5" y1="8" x2="4.5" y2="8" stroke="currentColor" stroke-width="1.3"/><line x1="11.5" y1="8" x2="14.5" y2="8" stroke="currentColor" stroke-width="1.3"/></svg>
+        Machine health
+      </button>
+      <button class="ni" onclick="showPage('downtime',this)">
+        <svg class="nic" fill="none" viewBox="0 0 16 16"><polyline points="1,13 4,8 7,10 11,4 15,6" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        Downtime
+      </button>
+      <button class="ni" onclick="showPage('costs',this)">
+        <svg class="nic" fill="none" viewBox="0 0 16 16"><rect x="1" y="5" width="14" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><line x1="1" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="1.3"/><line x1="5" y1="2.5" x2="5" y2="6" stroke="currentColor" stroke-width="1.3"/><line x1="11" y1="2.5" x2="11" y2="6" stroke="currentColor" stroke-width="1.3"/></svg>
+        Cost & parts
+      </button>
+      <button class="ni" onclick="showPage('alerts',this)">
+        <svg class="nic" fill="none" viewBox="0 0 16 16"><path d="M8 1.5L14 13H2L8 1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><line x1="8" y1="6" x2="8" y2="9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".8" fill="currentColor"/></svg>
+        Alerts
+      </button>
+    </nav>
+    <div class="sfooter">
+      <div class="sbadge"><div class="sdot" id="sdot"></div><span id="slbl">Connecting…</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="ph" id="ph">Overview</div>
+        <div class="ps" id="ps">Loading…</div>
+      </div>
+      <div class="ctrls">
+        <select id="fy" onchange="applyFilters()">
+          <option value="all">All years</option>
+          <option value="2022">2022</option><option value="2023">2023</option>
+          <option value="2024">2024</option><option value="2025">2025</option>
+          <option value="2026">2026</option>
+        </select>
+        <select id="fl" onchange="applyFilters()"><option value="all">All locations</option></select>
+        <select id="ft" onchange="applyFilters()">
+          <option value="all">All types</option>
+          <option value="Vehicle">Vehicles</option>
+          <option value="Machine">Machines</option>
+        </select>
+        <button class="btn" onclick="loadData()">
+          <svg width="11" height="11" fill="none" viewBox="0 0 11 11"><path d="M9.5 5.5A4 4 0 1 1 5.5 1.5V.5M5.5.5L7.5 2.5M5.5.5L3.5 2.5" stroke="#fff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="kg c5">
+        <div class="kpi"><div class="kt" style="background:var(--accent)"></div><div class="kl">Repair events</div><div class="kv" id="o1">—</div><div class="kd">unique job cards</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--red)"></div><div class="kl">Open job cards</div><div class="kv" style="color:var(--amber)" id="o2">—</div><div class="kd" id="o2s"></div></div>
+        <div class="kpi"><div class="kt" style="background:var(--green)"></div><div class="kl">Avg downtime</div><div class="kv" id="o3">—</div><div class="kd" id="o3d"></div></div>
+        <div class="kpi"><div class="kt" style="background:var(--purple)"></div><div class="kl">Fleet MTBF</div><div class="kv" id="o4">—</div><div class="kd">days between failures</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--amber)"></div><div class="kl">Quick returns</div><div class="kv" id="o5">—</div><div class="kd">back ≤ 7 days</div></div>
+      </div>
+      <div class="pills" id="opills"></div>
+      <div class="g2">
+        <div class="card"><div class="ct">Annual repair trend</div><div class="cs">Running repairs by year</div><div class="sw2" id="ospark"></div><div class="sl" id="osparklbl"></div></div>
+        <div class="card"><div class="ct">Repair vs service split</div><div class="cs">All logbook events</div>
+          <div class="dw">
+            <svg width="80" height="80" viewBox="0 0 80 80" style="flex-shrink:0">
+              <circle cx="40" cy="40" r="30" fill="none" stroke="#1e2535" stroke-width="13"/>
+              <circle id="drr" cx="40" cy="40" r="30" fill="none" stroke="#3b82f6" stroke-width="13" stroke-dasharray="0 188" stroke-dashoffset="47" transform="rotate(-90 40 40)"/>
+              <circle id="dsv" cx="40" cy="40" r="30" fill="none" stroke="#10b981" stroke-width="13" stroke-dasharray="0 188" stroke-dashoffset="47" transform="rotate(-90 40 40)"/>
+              <text x="40" y="37" text-anchor="middle" font-size="13" font-weight="600" fill="#e2e8f0" font-family="'IBM Plex Mono',monospace" id="dpct">—</text>
+              <text x="40" y="50" text-anchor="middle" font-size="9" fill="#64748b" font-family="'DM Sans',sans-serif">repairs</text>
+            </svg>
+            <div class="dl" id="odleg"></div>
+          </div>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ct">By VME type</div><div class="cs">Job card register</div><div id="ovme"></div></div>
+        <div class="card"><div class="ct">By location</div><div class="cs">Top sites</div><div id="oloc"></div></div>
+      </div>
+      <div class="gf card"><div class="ct">Monthly repair volume</div><div class="cs">Repairs per calendar month — all years</div><div class="hm" id="ohm"></div><div class="hg" id="oheat"></div></div>
+    </div>
+
+    <!-- MACHINES -->
+    <div class="page" id="page-machines">
+      <div class="kg">
+        <div class="kpi"><div class="kt" style="background:var(--red)"></div><div class="kl">Critical machines</div><div class="kv" style="color:var(--red)" id="m1">—</div><div class="kd">100+ days downtime</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--amber)"></div><div class="kl">Most repaired</div><div class="kv" style="font-size:15px;padding-top:5px" id="m2">—</div><div class="kd" id="m2s"></div></div>
+        <div class="kpi"><div class="kt" style="background:var(--accent)"></div><div class="kl">Unique machines</div><div class="kv" id="m3">—</div><div class="kd">in logbook</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--green)"></div><div class="kl">Avg parts/repair</div><div class="kv" id="m4">—</div><div class="kd">line items per job card</div></div>
+      </div>
+      <div class="gf card"><div class="ct">Machine risk register</div><div class="cs">5+ repairs · sorted by total days lost · running repairs only</div>
+        <div class="tw"><table><thead><tr><th>Machine</th><th>Model</th><th>VME type</th><th style="text-align:right">Repairs</th><th style="text-align:right">Days lost</th><th style="text-align:right">Avg/repair</th><th style="text-align:right">MTBF</th><th style="text-align:right">Spend</th><th>Risk</th></tr></thead><tbody id="mtbl"></tbody></table></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ct">Top models by repairs</div><div class="cs">Aggregated by model name</div><div id="mmdl"></div></div>
+        <div class="card"><div class="ct">By fleet category</div><div class="cs">Vehicle vs machine</div><div id="mtyp"></div></div>
+      </div>
+    </div>
+
+    <!-- DOWNTIME -->
+    <div class="page" id="page-downtime">
+      <div class="kg">
+        <div class="kpi"><div class="kt" style="background:var(--accent)"></div><div class="kl">Avg downtime</div><div class="kv" id="d1">—</div><div class="kd">days per repair</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--green)"></div><div class="kl">Resolved ≤ 3 days</div><div class="kv" id="d2">—</div><div class="kd" id="d2s"></div></div>
+        <div class="kpi"><div class="kt" style="background:var(--red)"></div><div class="kl">30+ day repairs</div><div class="kv" style="color:var(--red)" id="d3">—</div><div class="kd">long-tail incidents</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--amber)"></div><div class="kl">Worst machine</div><div class="kv" style="font-size:14px;padding-top:6px" id="d4">—</div><div class="kd" id="d4s"></div></div>
+      </div>
+      <div class="gf card"><div class="ct">Avg downtime per year</div><div class="cs">Improvement trend 2022–present</div><svg id="dtrend" style="width:100%;display:block" viewBox="0 0 700 110"></svg></div>
+      <div class="g2">
+        <div class="card"><div class="ct">Duration buckets</div><div class="cs">How long repairs take to close</div><div id="dbkt"></div></div>
+        <div class="card"><div class="ct">Avg by VME class</div><div class="cs">Mean days to close</div><div id="dvme"></div></div>
+      </div>
+      <div class="gf card"><div class="ct">Seasonality — avg downtime by month</div><div class="cs">Average days to close per calendar month</div><div id="dsea"></div></div>
+    </div>
+
+    <!-- COSTS -->
+    <div class="page" id="page-costs">
+      <div class="kg">
+        <div class="kpi"><div class="kt" style="background:var(--accent)"></div><div class="kl">Vehicle fleet spend</div><div class="kv" id="c1">—</div><div class="kd">recorded amounts only</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--green)"></div><div class="kl">Machine spend</div><div class="kv" id="c2">—</div><div class="kd">recorded amounts only</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--amber)"></div><div class="kl">Avg cost/repair</div><div class="kv" id="c3">—</div><div class="kd">where amount recorded</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--red)"></div><div class="kl">Most expensive</div><div class="kv" id="c4">—</div><div class="kd" id="c4s"></div></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ct">Top machines by spend</div><div class="cs">Total recorded cost</div><div id="cmch"></div></div>
+        <div class="card"><div class="ct">Most replaced parts</div><div class="cs">By frequency</div><div id="cpts"></div></div>
+      </div>
+      <div class="gf card"><div class="ct">Most expensive repairs</div><div class="cs">Top job cards by recorded cost</div>
+        <div class="tw"><table><thead><tr><th>Job card</th><th>Machine</th><th>Model</th><th>Type</th><th style="text-align:right">Amount</th><th style="text-align:right">Parts</th></tr></thead><tbody id="ctbl"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ALERTS -->
+    <div class="page" id="page-alerts">
+      <div class="kg c3">
+        <div class="kpi"><div class="kt" style="background:var(--red)"></div><div class="kl">Stale open cards</div><div class="kv" style="color:var(--red)" id="a1">—</div><div class="kd">open 90+ days</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--amber)"></div><div class="kl">Avg open card age</div><div class="kv" id="a2">—</div><div class="kd">days since start</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--purple)"></div><div class="kl">Quick-return rate</div><div class="kv" id="a3">—</div><div class="kd">back within 7 days</div></div>
+      </div>
+      <div class="gf card"><div class="ct">Open job cards — aged</div><div class="cs">All currently open · sorted by age</div>
+        <div class="tw"><table><thead><tr><th>Job card</th><th>Machine</th><th>VME type</th><th>Location</th><th>Supervisor</th><th style="text-align:right">Days open</th><th>Status</th></tr></thead><tbody id="atbl"></tbody></table></div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="ct">Quick-return machines</div><div class="cs">Repaired but back ≤ 7 days</div><div id="aqr"></div></div>
+        <div class="card"><div class="ct">Action items</div><div class="cs">Auto-generated from patterns</div><div class="al" id="aacts"></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── CONFIG — your Google Sheet IDs ──
+const LB_ID='1O4Ix8Y-o4x3vkNw7RFLLJFCXmdYA_8-3pzcpLrPa4tw',LB_GID='1455115989';
+const JC_ID='1TZoNjqZljQSQTfRcYquzoIPnYBcsO7aOEZs9Ko4hLPA',JC_GID='0';
+
+let RAW={db:[],jcs:[]},D={repairs:[],parts:[]};
+
+// ── UTILS ──
+const $=id=>document.getElementById(id);
+const prog=p=>$('lbar').style.width=p+'%';
+function parseCSV(t){
+  const lines=t.trim().split('\n'),hdr=csvRow(lines[0]);
+  return lines.slice(1).map(l=>{const v=csvRow(l),o={};hdr.forEach((h,i)=>o[h.trim()]=(v[i]||'').trim());return o;}).filter(r=>Object.values(r).some(v=>v));
+}
+function csvRow(l){const r=[];let c='',q=false;for(let i=0;i<l.length;i++){if(l[i]==='"')q=!q;else if(l[i]===','&&!q){r.push(c);c='';}else c+=l[i];}r.push(c);return r;}
+function pDate(s){
+  if(!s)return null;
+  const mo={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  let d=new Date(s);if(!isNaN(d)&&d.getFullYear()>1990&&d.getFullYear()<2030)return d;
+  const m=s.match(/(\d{1,2})[\s\-\/]([A-Za-z]+)[\s\-\/](\d{2,4})/i);
+  if(m){const mo2=mo[m[2].toLowerCase().slice(0,3)];if(mo2!==undefined){const yr=+m[3];d=new Date(yr<100?2000+yr:yr,mo2,+m[1]);if(!isNaN(d))return d;}}
+  return null;
+}
+function toN(s){if(!s&&s!==0)return null;const n=parseFloat(String(s).replace(/[^0-9.\-]/g,''));return isNaN(n)?null:n;}
+function fmt(n){if(!n||n<=0)return'—';if(n>=10000000)return'₹'+(n/10000000).toFixed(2)+' Cr';if(n>=100000)return'₹'+(n/100000).toFixed(1)+' L';if(n>=1000)return'₹'+Math.round(n/1000)+'K';return'₹'+Math.round(n).toLocaleString('en-IN');}
+function f1(n){return n===null||n===undefined?'—':n.toFixed(1);}
+
+// ── MOBILE ──
+function toggleSB(){$('sb').classList.toggle('open');$('ov').classList.toggle('show');}
+function closeSB(){$('sb').classList.remove('open');$('ov').classList.remove('show');}
+
+// ── FETCH — direct CSV, works from Vercel ──
+async function fetchCSV(id,gid){
+  const url=`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+  const r=await fetch(url);
+  if(!r.ok)throw new Error(`HTTP ${r.status} — sheet may not be public`);
+  return parseCSV(await r.text());
+}
+
+async function loadData(){
+  $('loading').style.display='flex';$('loading').classList.remove('out');
+  $('app').style.display='none';
+  $('sdot').classList.add('spin');
+  $('lmsg').textContent='Fetching job card register…';prog(10);
+  try{
+    RAW.jcs=await fetchCSV(JC_ID,JC_GID);prog(35);
+    $('lmsg').textContent='Fetching logbook data…';
+    RAW.db=await fetchCSV(LB_ID,LB_GID);prog(70);
+    $('lmsg').textContent='Processing…';
+    processData();prog(100);
+    $('slbl').textContent='Live · '+new Date().toLocaleTimeString();
+    $('sdot').classList.remove('spin');
+  }catch(e){
+    $('loading').innerHTML=`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:24px 28px;max-width:400px;text-align:center">
+      <div style="color:#fca5a5;font-size:14px;font-weight:600;margin-bottom:8px">Failed to load</div>
+      <div style="color:#94a3b8;font-size:12px;font-family:var(--mono);margin-bottom:16px;line-height:1.6">${e.message}<br><br>Make sure both Google Sheets are shared:<br><b style="color:#e2e8f0">Share → Anyone with link → Viewer</b></div>
+      <button class="btn" onclick="loadData()">Try again</button>
+    </div>`;
+    return;
+  }
+  $('loading').classList.add('out');
+  setTimeout(()=>{$('loading').style.display='none';},300);
+  $('app').style.display='grid';
+  buildLocFilter();
+  applyFilters();
+}
+
+function processData(){
+  const jcMap={};
+  RAW.jcs.forEach(r=>{
+    const no=toN(r['Job Card No']);if(!no)return;
+    jcMap[no]={
+      start:pDate(r['STARTING DATE']||r['STARTING DATE ']),
+      close:pDate(r['CLOSE DATE']||r['CLOSE DATE ']),
+      loc:(r['Location']||'').trim().toUpperCase().replace(/\s+/g,' '),
+      vmeType:r['VME Type']||'',status:r['Status']||'',
+      supervisor:r['Job Supervisor']||'',vmeno:r['VME No']||''
+    };
+  });
+  const grp={};
+  RAW.db.forEach(r=>{
+    const jcn=toN(r['Job Card Number']);if(!jcn)return;
+    if(!grp[jcn])grp[jcn]={mac:r['Veh/Mach/Equip No']||'',model:r['Model (Short)']||'',type:r['Type']||'',svc:r['Service Type']||'',date:pDate(r['Date']),cost:0,parts:[]};
+    const a=toN(r['Amount']);if(a!==null&&a>0&&a<5000000)grp[jcn].cost+=a;
+    const p=(r['Work/Spare Part Description']||'').trim().toLowerCase();
+    if(p&&p!=='work/spare part description'&&p.length>1)grp[jcn].parts.push(p);
+  });
+  D.repairs=Object.entries(grp).map(([jcn,g])=>{
+    const jc=jcMap[+jcn]||{};
+    const start=jc.start||g.date,close=jc.close;
+    let dt=null;if(start&&close){const d=Math.round((close-start)/86400000);if(d>=0&&d<=180)dt=d;}
+    return{jcn:+jcn,mac:g.mac,model:g.model,type:g.type,svc:g.svc,
+      date:start,year:start?start.getFullYear():null,month:start?start.getMonth()+1:null,
+      cost:g.cost,parts:g.parts,pc:g.parts.length,dt,
+      loc:jc.loc||'',vmeType:jc.vmeType||'',status:jc.status||'',
+      supervisor:jc.supervisor||'',vmeno:jc.vmeno||''};
+  });
+  const pf={};D.repairs.forEach(r=>r.parts.forEach(p=>{pf[p]=(pf[p]||0)+1;}));
+  D.parts=Object.entries(pf).sort((a,b)=>b[1]-a[1]).slice(0,20);
+}
+
+function buildLocFilter(){
+  const locs=[...new Set(RAW.jcs.map(r=>(r['Location']||'').trim().toUpperCase().replace(/\s+/g,' ')).filter(Boolean))].sort();
+  const s=$('fl');s.innerHTML='<option value="all">All locations</option>';
+  locs.forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=l;s.appendChild(o);});
+}
+
+function getF(){
+  const yr=$('fy').value,loc=$('fl').value,typ=$('ft').value;
+  return D.repairs.filter(r=>{
+    if(yr!=='all'&&r.year!==+yr)return false;
+    if(loc!=='all'&&r.loc!==loc)return false;
+    if(typ!=='all'&&r.type!==typ)return false;
+    return true;
+  });
+}
+
+function applyFilters(){
+  const f=getF();
+  const um=[...new Set(f.map(r=>r.mac).filter(Boolean))].length;
+  $('ps').textContent=f.length.toLocaleString()+' repair events · '+um+' machines';
+  rOverview(f);rMachines(f);rDowntime(f);rCosts(f);rAlerts(f);
+}
+
+// ── CHART HELPERS ──
+function barChart(id,data,color,fv){
+  const c=$(id);if(!c)return;
+  const mx=Math.max(...data.map(d=>d.v),1);
+  c.innerHTML=data.map(d=>`<div class="br">
+    <div class="bl" title="${d.l}">${d.l}</div>
+    <div class="bk"><div class="bf" style="width:${Math.round(d.v/mx*100)}%;background:${color}"></div></div>
+    <div class="bv">${fv?fv(d.v):d.v.toLocaleString()}</div>
+  </div>`).join('');
+}
+
+function trendSVG(id,pts,color){
+  const svg=$(id);if(!svg||!pts.length)return;
+  const W=700,H=110,px=50,bot=22,top=14;
+  const mx=Math.max(...pts.map(p=>p.v),1);
+  const xs=pts.map((_,i)=>px+i*((W-px*2)/Math.max(pts.length-1,1)));
+  const ys=pts.map(p=>H-bot-(p.v/mx)*(H-bot-top));
+  const path=pts.map((p,i)=>`${i===0?'M':'L'}${xs[i]} ${ys[i]}`).join(' ');
+  svg.innerHTML=`<defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${color}" stop-opacity=".22"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+  </linearGradient></defs>
+  <path d="${path} L${xs[xs.length-1]} ${H-bot} L${xs[0]} ${H-bot} Z" fill="url(#lg)"/>
+  <path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  ${pts.map((p,i)=>`<circle cx="${xs[i]}" cy="${ys[i]}" r="5" fill="${color}"/>
+    <text x="${xs[i]}" y="${H}" text-anchor="middle" font-size="10" fill="#64748b" font-family="'IBM Plex Mono',monospace">${p.l}</text>
+    <text x="${xs[i]}" y="${ys[i]-9}" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="'IBM Plex Mono',monospace">${f1(p.v)}d</text>`).join('')}`;
+}
+
+function calcMTBF(rr){
+  const s=[...rr].filter(r=>r.date).sort((a,b)=>a.mac.localeCompare(b.mac)||(a.date-b.date));
+  const gaps=[];let pd=null,pm=null;
+  s.forEach(r=>{if(r.mac===pm&&pd){const g=Math.round((r.date-pd)/86400000);if(g>0&&g<730)gaps.push({mac:r.mac,g});}pd=r.date;pm=r.mac;});
+  return gaps;
+}
+
+// ── OVERVIEW ──
+function rOverview(f){
+  const rr=f.filter(r=>r.svc==='Running Repair'),sv=f.filter(r=>r.svc==='Service'||r.svc==='SERVICE');
+  const dtV=f.filter(r=>r.dt!==null),avgDt=dtV.length?dtV.reduce((s,r)=>s+r.dt,0)/dtV.length:0;
+  const openAll=RAW.jcs.filter(r=>(r['Status']||'').toLowerCase()==='open');
+  const gaps=calcMTBF(rr);
+  const mtbf=gaps.length?gaps.reduce((s,g)=>s+g.g,0)/gaps.length:0;
+  const qrPct=gaps.length?Math.round(gaps.filter(g=>g.g<=7).length/gaps.length*100):0;
+
+  $('o1').textContent=f.length.toLocaleString();
+  $('o2').textContent=openAll.length;$('o2s').textContent=Math.round(openAll.length/Math.max(RAW.jcs.length,1)*100)+'% of total';
+  $('o3').innerHTML=f1(avgDt)+' <span class="ku">days</span>';
+  $('o3d').innerHTML=avgDt<4?'<span class="up">Good turnaround</span>':'<span class="dn">Review criticals</span>';
+  $('o4').innerHTML=f1(mtbf)+' <span class="ku">days</span>';
+  $('o5').innerHTML=qrPct+'<span class="ku">%</span>';
+
+  $('opills').innerHTML=[
+    {l:'Running repairs',v:rr.length},{l:'Scheduled services',v:sv.length},
+    {l:'With recorded cost',v:f.filter(r=>r.cost>0).length},
+    {l:'Same-day closures',v:dtV.filter(r=>r.dt===0).length},
+  ].map(p=>`<div class="pill"><b>${p.v.toLocaleString()}</b>${p.l}</div>`).join('');
+
+  const years=[2018,2019,2020,2021,2022,2023,2024,2025,2026];
+  const yc=years.map(y=>rr.filter(r=>r.year===y).length),mx=Math.max(...yc,1);
+  const blues=['#1e3a5f','#1e4060','#234878','#2a5a9f','#2d64b0','#3272c0','#3b82f6','#4f8ef7','#60a5fa'];
+  $('ospark').innerHTML=yc.map((v,i)=>`<div class="sb" style="height:${Math.max(3,Math.round(v/mx*46))}px;background:${blues[i]}" title="${years[i]}: ${v}"></div>`).join('');
+  $('osparklbl').innerHTML=years.map(y=>`<div class="sli">${String(y).slice(2)}</div>`).join('');
+
+  const total=rr.length+sv.length||1,circ=188;
+  const rrA=(rr.length/total)*circ,svA=(sv.length/total)*circ;
+  $('drr').setAttribute('stroke-dasharray',`${rrA} ${circ}`);
+  $('dsv').setAttribute('stroke-dasharray',`${svA} ${circ}`);
+  $('dsv').setAttribute('stroke-dashoffset',47-rrA);
+  $('dpct').textContent=Math.round(rr.length/total*100)+'%';
+  $('odleg').innerHTML=[{c:'#3b82f6',n:'Running repairs',v:rr.length},{c:'#10b981',n:'Scheduled service',v:sv.length}]
+    .map(d=>`<div class="dli"><div class="dld" style="background:${d.c}"></div><div class="dln">${d.n}</div><div class="dlv">${d.v.toLocaleString()}</div></div>`).join('');
+
+  const vme={};RAW.jcs.forEach(r=>{const t=r['VME Type'];if(t)vme[t]=(vme[t]||0)+1;});
+  barChart('ovme',Object.entries(vme).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v])=>({l,v})),'#3b82f6');
+  const lc={};RAW.jcs.forEach(r=>{const l=(r['Location']||'').trim().toUpperCase().replace(/\s+/g,' ');if(l)lc[l]=(lc[l]||0)+1;});
+  barChart('oloc',Object.entries(lc).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v])=>({l,v})),'#10b981');
+
+  const mths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mc=Array(12).fill(0);f.forEach(r=>{if(r.month)mc[r.month-1]++;});
+  const mmax=Math.max(...mc,1);
+  $('ohm').innerHTML=mths.map(m=>`<div class="hmn">${m}</div>`).join('');
+  $('oheat').innerHTML=mc.map((v,i)=>{const op=0.1+0.9*(v/mmax);return`<div class="hc" style="background:rgba(59,130,246,${op.toFixed(2)});color:${op>0.55?'#e2e8f0':'#94a3b8'}" title="${mths[i]}: ${v}">${v||''}</div>`;}).join('');
+}
+
+// ── MACHINES ──
+function rMachines(f){
+  const rr=f.filter(r=>r.svc==='Running Repair'),mm={};
+  rr.forEach(r=>{if(!r.mac)return;if(!mm[r.mac])mm[r.mac]={model:r.model,vme:r.vmeType,n:0,dtS:0,dtC:0,cost:0,dates:[]};mm[r.mac].n++;if(r.dt!==null){mm[r.mac].dtS+=r.dt;mm[r.mac].dtC++;}mm[r.mac].cost+=r.cost;if(r.date)mm[r.mac].dates.push(r.date);});
+  const sorted=Object.entries(mm).filter(([,v])=>v.n>=5).map(([m,v])=>{
+    const ds=v.dates.sort((a,b)=>a-b);let gps=[];
+    for(let i=1;i<ds.length;i++){const g=Math.round((ds[i]-ds[i-1])/86400000);if(g>0&&g<730)gps.push(g);}
+    return{m,model:v.model,vme:v.vme,n:v.n,dtS:v.dtS,dtC:v.dtC,avgDt:v.dtC?v.dtS/v.dtC:null,cost:v.cost,mtbf:gps.length?gps.reduce((s,v)=>s+v,0)/gps.length:null};
+  }).sort((a,b)=>b.dtS-a.dtS);
+
+  $('m1').textContent=sorted.filter(r=>r.dtS>=100).length;
+  const top=sorted[0]||{};$('m2').textContent=top.m||'—';$('m2s').textContent=top.n?(top.n+' repairs · '+top.model):'';
+  $('m3').textContent=[...new Set(f.map(r=>r.mac).filter(Boolean))].length.toLocaleString();
+  $('m4').textContent=f.length?(f.reduce((s,r)=>s+r.pc,0)/f.length).toFixed(1):'—';
+
+  $('mtbl').innerHTML=sorted.slice(0,25).map(r=>{
+    const risk=r.dtS>=200||r.avgDt>20?['br2','Critical']:r.dtS>=100||r.n>=40?['bam','High']:['bgr','Monitor'];
+    return`<tr><td>${r.m}</td><td style="color:var(--subtle)">${r.model}</td><td style="color:var(--muted);font-size:10px">${r.vme}</td><td class="n">${r.n}</td><td class="n">${r.dtS}d</td><td class="n">${r.avgDt!==null?f1(r.avgDt)+'d':'—'}</td><td class="n">${r.mtbf!==null?Math.round(r.mtbf)+'d':'—'}</td><td class="n">${fmt(r.cost)}</td><td><span class="b ${risk[0]}">${risk[1]}</span></td></tr>`;
+  }).join('');
+
+  const mdl={};rr.forEach(r=>{if(r.model)mdl[r.model]=(mdl[r.model]||0)+1;});
+  barChart('mmdl',Object.entries(mdl).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v])=>({l,v})),'#3b82f6');
+  const typ={};f.forEach(r=>{if(r.type&&r.type.length<25)typ[r.type]=(typ[r.type]||0)+1;});
+  barChart('mtyp',Object.entries(typ).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([l,v])=>({l,v})),'#f59e0b');
+}
+
+// ── DOWNTIME ──
+function rDowntime(f){
+  const dtV=f.filter(r=>r.dt!==null),avg=dtV.length?dtV.reduce((s,r)=>s+r.dt,0)/dtV.length:0;
+  const fast=dtV.filter(r=>r.dt<=3).length;
+  $('d1').innerHTML=f1(avg)+' <span class="ku">days</span>';
+  $('d2').innerHTML=Math.round(fast/Math.max(dtV.length,1)*100)+'<span class="ku">%</span>';
+  $('d2s').textContent=fast+' of '+dtV.length+' matched repairs';
+  $('d3').textContent=dtV.filter(r=>r.dt>=30).length;
+  const mdt={};f.filter(r=>r.dt!==null&&r.svc==='Running Repair').forEach(r=>{if(!mdt[r.mac])mdt[r.mac]={s:0,c:0};mdt[r.mac].s+=r.dt;mdt[r.mac].c++;});
+  const worst=Object.entries(mdt).filter(([,v])=>v.c>=3).sort((a,b)=>(b[1].s/b[1].c)-(a[1].s/a[1].c))[0];
+  if(worst){$('d4').textContent=worst[0];$('d4s').textContent=f1(worst[1].s/worst[1].c)+'d avg/repair';}
+  const yrs=[2022,2023,2024,2025];
+  trendSVG('dtrend',yrs.map(y=>{const r=dtV.filter(r=>r.year===y);return r.length?{l:String(y),v:r.reduce((s,r)=>s+r.dt,0)/r.length}:null;}).filter(Boolean),'#3b82f6');
+  barChart('dbkt',[{l:'Same day',v:dtV.filter(r=>r.dt===0).length},{l:'1–3 days',v:dtV.filter(r=>r.dt>=1&&r.dt<=3).length},{l:'4–7 days',v:dtV.filter(r=>r.dt>=4&&r.dt<=7).length},{l:'8–14 days',v:dtV.filter(r=>r.dt>=8&&r.dt<=14).length},{l:'15–30 days',v:dtV.filter(r=>r.dt>=15&&r.dt<=30).length},{l:'30+ days',v:dtV.filter(r=>r.dt>30).length}],'#3b82f6');
+  const vdt={};f.filter(r=>r.dt!==null&&r.vmeType).forEach(r=>{if(!vdt[r.vmeType])vdt[r.vmeType]={s:0,c:0};vdt[r.vmeType].s+=r.dt;vdt[r.vmeType].c++;});
+  barChart('dvme',Object.entries(vdt).filter(([,v])=>v.c>=3).map(([l,v])=>({l,v:parseFloat((v.s/v.c).toFixed(1))})).sort((a,b)=>b.v-a.v).slice(0,8),'#ef4444',v=>v+'d');
+  const mths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const ms=Array(12).fill(0),mc=Array(12).fill(0);
+  f.filter(r=>r.month&&r.dt!==null&&r.year>=2022).forEach(r=>{ms[r.month-1]+=r.dt;mc[r.month-1]++;});
+  barChart('dsea',mths.map((l,i)=>({l,v:mc[i]?parseFloat((ms[i]/mc[i]).toFixed(1)):0})),'#8b5cf6',v=>v+'d');
+}
+
+// ── COSTS ──
+function rCosts(f){
+  const veh=f.filter(r=>r.type==='Vehicle').reduce((s,r)=>s+r.cost,0);
+  const mch=f.filter(r=>r.type==='Machine').reduce((s,r)=>s+r.cost,0);
+  const wc=f.filter(r=>r.cost>0),maxR=f.reduce((m,r)=>r.cost>m.cost?r:m,{cost:0});
+  $('c1').textContent=fmt(veh);$('c2').textContent=fmt(mch);
+  $('c3').textContent=fmt(wc.length?wc.reduce((s,r)=>s+r.cost,0)/wc.length:0);
+  $('c4').textContent=fmt(maxR.cost);$('c4s').textContent=maxR.mac||'';
+  const ms={};f.forEach(r=>{if(r.mac&&r.cost>0)ms[r.mac]=(ms[r.mac]||0)+r.cost;});
+  barChart('cmch',Object.entries(ms).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v])=>({l,v})),'#f59e0b',fmt);
+  barChart('cpts',D.parts.slice(0,10).map(([l,v])=>({l,v})),'#10b981');
+  $('ctbl').innerHTML=[...f].sort((a,b)=>b.cost-a.cost).slice(0,12).map(r=>`<tr><td>#${r.jcn}</td><td>${r.mac}</td><td style="color:var(--subtle)">${r.model}</td><td><span class="b bbl" style="font-size:9px">${r.svc}</span></td><td class="n">${fmt(r.cost)}</td><td class="n">${r.pc}</td></tr>`).join('');
+}
+
+// ── ALERTS ──
+function rAlerts(f){
+  const now=new Date();
+  const open=RAW.jcs.filter(r=>(r['Status']||'').toLowerCase()==='open').map(r=>{
+    const s=pDate(r['STARTING DATE']||r['STARTING DATE ']);
+    const age=s?Math.round((now-s)/86400000):null;
+    return{jcn:r['Job Card No'],vmeno:r['VME No']||'',vme:r['VME Type']||'',loc:(r['Location']||'').trim().toUpperCase(),sup:r['Job Supervisor']||'',age};
+  }).filter(r=>r.age!==null).sort((a,b)=>b.age-a.age);
+
+  const stale=open.filter(r=>r.age>=90).length;
+  const avgAge=open.length?Math.round(open.reduce((s,r)=>s+r.age,0)/open.length):0;
+  const gaps=calcMTBF(f.filter(r=>r.svc==='Running Repair'));
+  const qrPct=gaps.length?Math.round(gaps.filter(g=>g.g<=7).length/gaps.length*100):0;
+
+  $('a1').textContent=stale;$('a2').innerHTML=avgAge+' <span class="ku">days</span>';$('a3').innerHTML=qrPct+'<span class="ku">%</span>';
+
+  $('atbl').innerHTML=open.slice(0,20).map(r=>{
+    const b=r.age>=180?'br2':r.age>=90?'bam':r.age>=30?'bbl':'bgr';
+    const l=r.age>=180?'Critical':r.age>=90?'Stale':r.age>=30?'Ageing':'Recent';
+    return`<tr><td>#${r.jcn}</td><td>${r.vmeno}</td><td style="color:var(--muted);font-size:10px">${r.vme}</td><td style="color:var(--muted);font-size:10px">${r.loc}</td><td style="color:var(--muted);font-size:10px">${r.sup}</td><td class="n">${r.age}d</td><td><span class="b ${b}">${l}</span></td></tr>`;
+  }).join('');
+
+  const qrM={};let pd=null,pm=null;
+  [...f].filter(r=>r.svc==='Running Repair'&&r.date).sort((a,b)=>a.mac.localeCompare(b.mac)||(a.date-b.date))
+    .forEach(r=>{if(r.mac===pm&&pd){const g=Math.round((r.date-pd)/86400000);if(g>0&&g<=7)qrM[r.mac]=(qrM[r.mac]||0)+1;}pd=r.date;pm=r.mac;});
+  barChart('aqr',Object.entries(qrM).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v])=>({l,v})),'#ef4444');
+
+  const mdt={};f.filter(r=>r.dt!==null&&r.svc==='Running Repair').forEach(r=>{if(!mdt[r.mac])mdt[r.mac]={s:0,c:0};mdt[r.mac].s+=r.dt;mdt[r.mac].c++;});
+  const topDt=Object.entries(mdt).filter(([,v])=>v.c>=5).sort((a,b)=>(b[1].s/b[1].c)-(a[1].s/a[1].c))[0];
+  const dtV=f.filter(r=>r.dt!==null&&r.year===2025);
+  const avg25=dtV.length?dtV.reduce((s,r)=>s+r.dt,0)/dtV.length:null;
+  const oilCount=D.parts.filter(([p])=>p.includes('oil')).reduce((s,[,v])=>s+v,0);
+  $('aacts').innerHTML=[
+    stale>=5?{t:'red',title:`${stale} job cards open for 90+ days`,body:'Likely forgotten or stuck. Review with supervisors — oldest: '+open.filter(r=>r.age>=90).slice(0,3).map(r=>r.vmeno||('#'+r.jcn)).join(', ')}:null,
+    qrPct>40?{t:'red',title:`${qrPct}% quick-return rate — repairs not fully resolving root cause`,body:'Nearly half of repaired machines break down again within a week. Needs deeper investigation per machine.'}:null,
+    topDt?{t:'amber',title:`${topDt[0]} averages ${f1(topDt[1].s/topDt[1].c)} days per repair`,body:'Consistently the slowest machine to fix. Stock dedicated spares or pre-authorise a specialist workshop.'}:null,
+    {t:'amber',title:'Oil-related parts dominate replacement frequency',body:`${oilCount.toLocaleString()} oil filter/engine oil entries logged. Review PM intervals — may indicate missed services.`},
+    avg25!==null&&avg25<3.5?{t:'green',title:`Workshop turnaround improving — 2025 avg ${f1(avg25)}d vs 6.4d in 2022`,body:'Document what changed as a standard process so the improvement is sustained.'}:null,
+  ].filter(Boolean).map(a=>`<div class="ai a${a.t}"><div class="att">${a.title}</div><div class="atb">${a.body}</div></div>`).join('');
+}
+
+function showPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  $('page-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  const titles={overview:'Overview',machines:'Machine health',downtime:'Downtime analysis',costs:'Cost & parts',alerts:'Alerts & actions'};
+  $('ph').textContent=titles[name]||name;
+  closeSB();
+}
+
+loadData();
+</script>
+</body>
+</html>
