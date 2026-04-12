@@ -256,6 +256,10 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
         <svg class="nic" fill="none" viewBox="0 0 16 16"><path d="M8 1.5L14 13H2L8 1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><line x1="8" y1="6" x2="8" y2="9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".8" fill="currentColor"/></svg>
         Alerts
       </button>
+      <button class="ni" onclick="showPage('retain',this)">
+        <svg class="nic" fill="none" viewBox="0 0 16 16"><line x1="8" y1="1.5" x2="8" y2="14.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="2.5" y1="4.5" x2="13.5" y2="4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M2.5 4.5 Q2.5 8.5 5.5 8.5 Q8 8.5 8 4.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M8 4.5 Q8 8.5 10.5 8.5 Q13.5 8.5 13.5 4.5" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+        Fleet retention
+      </button>
     </nav>
     <div class="sfooter">
       <div class="sbadge"><div class="sdot" id="sdot"></div><span id="slbl">Connecting…</span></div>
@@ -483,6 +487,51 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
       <div class="g2">
         <div class="card"><div class="ct">Quick-return machines</div><div class="cs">Repaired but back ≤ 7 days</div><div id="aqr"></div></div>
         <div class="card"><div class="ct">Action items</div><div class="cs">Auto-generated from data patterns</div><div class="al" id="aacts"></div></div>
+      </div>
+    </div>
+
+    <!-- ══ FLEET RETENTION ══ -->
+    <div class="page" id="page-retain">
+      <div class="kg c3">
+        <div class="kpi"><div class="kt" style="background:var(--grn)"></div><div class="kl">Keep</div><div class="kv" style="color:var(--grn)" id="r1">—</div><div class="kd">score 0–3 · low burden</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--amb)"></div><div class="kl">Review</div><div class="kv" style="color:var(--amb)" id="r2">—</div><div class="kd">score 4–7 · monitor closely</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--red)"></div><div class="kl">Consider disposal</div><div class="kv" style="color:var(--red)" id="r3">—</div><div class="kd">score 8+ · high burden</div></div>
+      </div>
+      <div class="gf card">
+        <div class="ct">Machine retention analysis</div>
+        <div class="cs">Running repairs only · 3+ repairs · scored on frequency, downtime, MTBF, and relative spend</div>
+        <div class="tw"><table><thead><tr>
+          <th>Machine</th><th>VME type</th><th>Model</th>
+          <th style="text-align:right">Repairs</th>
+          <th style="text-align:right">Freq</th>
+          <th style="text-align:right">Avg downtime</th>
+          <th style="text-align:right">MTBF</th>
+          <th style="text-align:right">Total spend</th>
+          <th style="text-align:right">Score</th>
+          <th>Recommendation</th>
+        </tr></thead><tbody id="rtbl"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="ct">How scores are calculated</div>
+        <div class="cs">Each machine rated across 4 signals · max 3 pts each · total out of 12</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px">
+          <div style="background:var(--sur2);border-radius:var(--rs);padding:12px">
+            <div style="font-size:10px;font-weight:600;color:var(--sub);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Repair frequency</div>
+            <div style="font-size:11px;color:var(--mut);line-height:1.8">≤2/yr → 0<br>2–5/yr → 1<br>5–8/yr → 2<br>&gt;8/yr → 3</div>
+          </div>
+          <div style="background:var(--sur2);border-radius:var(--rs);padding:12px">
+            <div style="font-size:10px;font-weight:600;color:var(--sub);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Avg downtime</div>
+            <div style="font-size:11px;color:var(--mut);line-height:1.8">≤5d → 0<br>5–10d → 1<br>10–20d → 2<br>&gt;20d → 3</div>
+          </div>
+          <div style="background:var(--sur2);border-radius:var(--rs);padding:12px">
+            <div style="font-size:10px;font-weight:600;color:var(--sub);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">MTBF</div>
+            <div style="font-size:11px;color:var(--mut);line-height:1.8">&gt;90d → 0<br>60–90d → 1<br>30–60d → 2<br>&lt;30d → 3</div>
+          </div>
+          <div style="background:var(--sur2);border-radius:var(--rs);padding:12px">
+            <div style="font-size:10px;font-weight:600;color:var(--sub);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Relative spend</div>
+            <div style="font-size:11px;color:var(--mut);line-height:1.8">Bottom 50% → 0<br>50–75% → 1<br>75–90% → 2<br>Top 10% → 3</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -817,7 +866,7 @@ function applyFilters() {
   const um = [...new Set(f.map(r=>r.vno).filter(Boolean))].length;
   $('ps').textContent = f.length.toLocaleString()+' repair events · '+um+' machines';
   $('fstats').textContent = f.length.toLocaleString()+' events matching filters';
-  rOverview(f); rMachines(f); rDowntime(f); rCosts(f); rAlerts(f);
+  rOverview(f); rMachines(f); rDowntime(f); rCosts(f); rAlerts(f); rRetain(f);
 }
 
 // ══ CHART HELPERS ══
@@ -1129,13 +1178,80 @@ function rAlerts(f) {
   ].filter(Boolean).map(a=>`<div class="ai a${a.t}"><div class="att">${a.title}</div><div class="atb">${a.body}</div></div>`).join('');
 }
 
+// ══ FLEET RETENTION ══
+function rRetain(f) {
+  const rr = f.filter(r => r.svc === 'Running Repair');
+  const mm = {};
+  rr.forEach(r => {
+    if (!r.vno) return;
+    if (!mm[r.vno]) mm[r.vno] = {vme:r.vmeType, model:r.model, n:0, dtS:0, dtC:0, cost:0, dates:[]};
+    mm[r.vno].n++;
+    if (r.dt !== null) { mm[r.vno].dtS += r.dt; mm[r.vno].dtC++; }
+    mm[r.vno].cost += r.cost;
+    if (r.date) mm[r.vno].dates.push(r.date);
+  });
+
+  const machines = Object.entries(mm).filter(([,v]) => v.n >= 3).map(([vno, v]) => {
+    const ds = v.dates.sort((a,b) => a-b);
+    let gps = [];
+    for (let i = 1; i < ds.length; i++) {
+      const g = Math.round((ds[i]-ds[i-1])/86400000);
+      if (g > 0 && g < 730) gps.push(g);
+    }
+    const mtbf = gps.length ? gps.reduce((s,g) => s+g, 0)/gps.length : null;
+    const yearsActive = ds.length >= 2 ? Math.max((ds[ds.length-1]-ds[0])/(365.25*86400000), 0.5) : 1;
+    const rpy = v.n / yearsActive;
+    const avgDt = v.dtC ? v.dtS/v.dtC : null;
+    return {vno, vme:v.vme, model:v.model, n:v.n, rpy, avgDt, mtbf, cost:v.cost};
+  });
+
+  if (!machines.length) {
+    $('rtbl').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--mut);padding:20px">Not enough data — need machines with 3+ running repairs</td></tr>';
+    ['r1','r2','r3'].forEach(id => $(id).textContent = '0');
+    return;
+  }
+
+  // Percentile thresholds for relative spend
+  const sc = [...machines].map(m => m.cost).sort((a,b) => a-b);
+  const p50 = sc[Math.floor(sc.length*0.50)] || 0;
+  const p75 = sc[Math.floor(sc.length*0.75)] || 0;
+  const p90 = sc[Math.floor(sc.length*0.90)] || 0;
+
+  const scored = machines.map(m => {
+    const sRpy  = m.rpy > 8 ? 3 : m.rpy > 5 ? 2 : m.rpy > 2 ? 1 : 0;
+    const sDt   = m.avgDt === null ? 0 : m.avgDt > 20 ? 3 : m.avgDt > 10 ? 2 : m.avgDt > 5 ? 1 : 0;
+    const sMtbf = m.mtbf === null ? 1 : m.mtbf < 30 ? 3 : m.mtbf < 60 ? 2 : m.mtbf < 90 ? 1 : 0;
+    const sCost = m.cost > p90 ? 3 : m.cost > p75 ? 2 : m.cost > p50 ? 1 : 0;
+    const score = sRpy + sDt + sMtbf + sCost;
+    const rec   = score >= 8 ? ['br2','Consider disposal'] : score >= 4 ? ['bam','Review'] : ['bgr','Keep'];
+    return {...m, score, rec};
+  }).sort((a,b) => b.score - a.score);
+
+  $('r1').textContent = scored.filter(m => m.score < 4).length;
+  $('r2').textContent = scored.filter(m => m.score >= 4 && m.score < 8).length;
+  $('r3').textContent = scored.filter(m => m.score >= 8).length;
+
+  $('rtbl').innerHTML = scored.map(m => `<tr>
+    <td>${m.vno}</td>
+    <td style="color:var(--sub);font-size:11px">${m.vme||'—'}</td>
+    <td style="color:var(--sub)">${m.model||'—'}</td>
+    <td class="n">${m.n}</td>
+    <td class="n">${m.rpy.toFixed(1)}/yr</td>
+    <td class="n">${m.avgDt!==null?f1(m.avgDt)+'d':'—'}</td>
+    <td class="n">${m.mtbf!==null?Math.round(m.mtbf)+'d':'—'}</td>
+    <td class="n">${fmt(m.cost)}</td>
+    <td class="n" style="font-family:var(--mono);font-size:11px">${m.score}/12</td>
+    <td><span class="b ${m.rec[0]}">${m.rec[1]}</span></td>
+  </tr>`).join('');
+}
+
 // ══ PAGE NAV ══
 function showPage(name, btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   $('page-'+name).classList.add('active');
   if(btn) btn.classList.add('active');
-  const titles={overview:'Overview',machines:'Machine health',downtime:'Downtime analysis',costs:'Cost & parts',alerts:'Alerts & actions'};
+  const titles={overview:'Overview',machines:'Machine health',downtime:'Downtime analysis',costs:'Cost & parts',alerts:'Alerts & actions',retain:'Fleet retention'};
   $('ph').textContent=titles[name]||name;
   closeSB();
 }
