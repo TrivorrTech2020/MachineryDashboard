@@ -455,6 +455,9 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
         <div class="card"><div class="ct">Spend by VME type</div><div class="cs">Col B from support sheet</div><div id="cvme"></div></div>
       </div>
       <div class="g2">
+        <div class="card"><div class="ct">Spend by model</div><div class="cs">Col C from support sheet</div><div id="cmdl"></div></div>
+      </div>
+      <div class="g2">
         <div class="card"><div class="ct">Most replaced parts</div><div class="cs">By frequency across all job cards</div><div id="cpts"></div></div>
         <div class="card"><div class="ct">Most expensive repairs</div><div class="cs">Top job cards by cost</div>
           <div class="tw"><table><thead><tr><th>Job card</th><th>Machine</th><th>VME type</th><th style="text-align:right">Amount</th><th style="text-align:right">Parts</th></tr></thead><tbody id="ctbl"></tbody></table></div>
@@ -1046,6 +1049,10 @@ function rCosts(f) {
   // VME type spend
   const vs={};f.forEach(r=>{if(r.vmeType&&r.cost>0)vs[r.vmeType]=(vs[r.vmeType]||0)+r.cost;});
   barChart('cvme',Object.entries(vs).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v])=>({l,v})),'#8b5cf6',fmt);
+
+  // Model spend
+  const ms2={};f.forEach(r=>{if(r.model&&r.cost>0)ms2[r.model]=(ms2[r.model]||0)+r.cost;});
+  barChart('cmdl',Object.entries(ms2).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v])=>({l,v})),'#f59e0b',fmt);
 
   // Parts
   barChart('cpts',D.parts.slice(0,10).map(([l,v])=>({l,v})),'#10b981');
