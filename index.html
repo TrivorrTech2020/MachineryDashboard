@@ -330,6 +330,7 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
     </nav>
     <div class="sfooter">
       <div class="sbadge"><div class="sdot" id="sdot"></div><span id="slbl">Connecting…</span></div>
+      <button onclick="signOut()" style="margin-top:10px;background:none;border:none;font-size:10px;color:var(--mut);cursor:pointer;font-family:var(--mono);padding:0;text-align:left;display:none" id="btn-signout">Sign out</button>
     </div>
   </aside>
 
@@ -795,13 +796,29 @@ function onGISLoad() {
     scope     : 'https://www.googleapis.com/auth/spreadsheets.readonly',
     callback  : _handleToken,
   });
-  $('btn-google').disabled = false;
+  // If user has signed in before, attempt silent token refresh (no popup)
+  if(localStorage.getItem('sgf_authed') === '1') {
+    _tokenClient.requestAccessToken({ prompt: '' });
+    // Show button as fallback if silent auth doesn't respond in 4s
+    setTimeout(() => { if(!_accessToken) $('btn-google').disabled = false; }, 4000);
+  } else {
+    $('btn-google').disabled = false;
+  }
 }
 
 function _handleToken(resp) {
-  if(resp.error) { showAuthError('Sign-in failed: ' + resp.error); return; }
+  if(resp.error) {
+    // Silent refresh failed — clear flag and show login button
+    localStorage.removeItem('sgf_authed');
+    if(resp.error !== 'user_logged_out' && resp.error !== 'immediate_failed') {
+      showAuthError('Sign-in failed: ' + resp.error);
+    }
+    $('btn-google').disabled = false;
+    return;
+  }
   _accessToken = resp.access_token;
   _tokenExpiry  = Date.now() + (resp.expires_in - 60) * 1000;
+  localStorage.setItem('sgf_authed', '1');
   $('auth-screen').classList.add('hidden');
   loadData();
 }
@@ -818,6 +835,13 @@ function showAuthError(msg) {
   el.textContent = msg;
   el.classList.add('show');
   $('btn-google').disabled = false;
+}
+
+function signOut() {
+  localStorage.removeItem('sgf_authed');
+  _accessToken = null;
+  google.accounts.oauth2.revoke(_accessToken, () => {});
+  location.reload();
 }
 
 async function _ensureToken() {
@@ -923,6 +947,7 @@ async function loadData() {
     processData();                                             prog(100);
     $('slbl').textContent = 'Live · ' + new Date().toLocaleTimeString();
     $('sdot').classList.remove('pulse');
+    if(REQUIRE_AUTH) { const so=$('btn-signout'); if(so) so.style.display='block'; }
   } catch(e) {
     const isAccessDenied = e.message === 'ACCESS_DENIED';
     $('loading').innerHTML = `<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:24px 28px;max-width:420px;text-align:center">
