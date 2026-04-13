@@ -906,7 +906,8 @@ async function fetchSheet(id, gid) {
 }
 
 // Unified dispatcher used by loadData / refreshData
-const fetchData = (id, gid) => REQUIRE_AUTH ? fetchSheet(id, gid) : _fetchCSV(id, gid);
+// Auth controls dashboard access; data always fetched via public CSV links
+const fetchData = (id, gid) => _fetchCSV(id, gid);
 
 async function refreshData() {
   const btn = $('btn-refresh-icon');
