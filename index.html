@@ -196,6 +196,10 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
 .jc-search:focus{border-color:var(--acc)}
 .jc-search::placeholder{color:var(--mut)}
 .jc-count{font-size:11px;color:var(--mut);font-family:var(--mono)}
+.jc-toggle{background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);padding:0 12px;height:34px;font-size:12px;color:var(--sub);cursor:pointer;font-family:var(--sans);display:flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap;user-select:none}
+.jc-toggle:hover{border-color:var(--acc);color:var(--acc)}
+.jc-toggle.on{background:rgba(245,158,11,.1);border-color:var(--amb);color:var(--amb)}
+.jc-toggle .jt-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
 
 /* ── DRAWER ── */
 #jc-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:400}
@@ -573,6 +577,9 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
     <div class="page" id="page-jobcards">
       <div class="jc-toolbar">
         <input class="jc-search" id="jc-search" type="search" placeholder="Search job card #, VME, model, location…" oninput="filterJCTable(this.value)">
+        <button class="jc-toggle" id="jc-open-toggle" onclick="toggleOpenOnly()" title="Show only open job cards">
+          <span class="jt-dot"></span>Open only
+        </button>
         <span class="jc-count" id="jc-count"></span>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
@@ -1404,14 +1411,23 @@ function rRetain(f) {
 }
 
 // ══ JOB CARDS ══
+let _jcOpenOnly = false;
+
 function rJobCards(f) {
   _jcRows = [...f].sort((a,b) => (b.date||0) - (a.date||0));
-  filterJCTable('');
+  filterJCTable($('jc-search')?.value || '');
+}
+
+function toggleOpenOnly() {
+  _jcOpenOnly = !_jcOpenOnly;
+  const btn = $('jc-open-toggle');
+  if(btn) btn.classList.toggle('on', _jcOpenOnly);
+  filterJCTable($('jc-search')?.value || '');
 }
 
 function filterJCTable(q) {
   const s = (q||'').toLowerCase().trim();
-  const rows = s
+  let rows = s
     ? _jcRows.filter(r =>
         String(r.jcn).includes(s) ||
         (r.vno||'').toLowerCase().includes(s) ||
@@ -1421,6 +1437,7 @@ function filterJCTable(q) {
         (r.status||'').toLowerCase().includes(s)
       )
     : _jcRows;
+  if(_jcOpenOnly) rows = rows.filter(r => (r.status||'').toLowerCase() === 'open');
   $('jc-count').textContent = rows.length.toLocaleString() + ' job cards';
   renderJCTable(rows);
 }
