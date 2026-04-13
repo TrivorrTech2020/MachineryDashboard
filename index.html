@@ -648,6 +648,11 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
 </div>
 
 <script>
+// ══ ACCESS MODE ══
+// true  → login required; sheets must be restricted to specific accounts
+// false → open access;   sheets must be shared "Anyone with the link"
+const REQUIRE_AUTH = true;
+
 // ══ OAUTH — paste your Google Cloud OAuth 2.0 Client ID here ══
 const OAUTH_CLIENT_ID = '639899809456-c1vspu9asqoofbksq2cl8tq3eucc3v7n.apps.googleusercontent.com';
 
@@ -844,6 +849,26 @@ async function _resolveSheetName(spreadsheetId, gid) {
 }
 
 // ══ FETCH ══
+// Open-access path (sheets must be public)
+function _parseCSV(t) {
+  const lines = t.trim().split('\n'), hdr = _csvRow(lines[0]);
+  return lines.slice(1)
+    .map(l => { const v=_csvRow(l),o={}; hdr.forEach((h,i)=>o[h.trim()]=(v[i]||'').trim()); return o; })
+    .filter(r => Object.values(r).some(v=>v));
+}
+function _csvRow(l) {
+  const r=[]; let c='',q=false;
+  for(let i=0;i<l.length;i++){if(l[i]==='"')q=!q;else if(l[i]===','&&!q){r.push(c);c='';}else c+=l[i];}
+  r.push(c); return r;
+}
+async function _fetchCSV(id, gid) {
+  const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error(`HTTP ${r.status} — sheet may not be public`);
+  return _parseCSV(await r.text());
+}
+
+// Authenticated path (sheets can be restricted)
 async function fetchSheet(id, gid) {
   await _ensureToken();
   const sheetName = await _resolveSheetName(id, gid);
@@ -856,16 +881,19 @@ async function fetchSheet(id, gid) {
   return rows.map(row => Object.fromEntries((headers || []).map((h, i) => [h.trim(), (row[i] ?? '').trim()])));
 }
 
+// Unified dispatcher used by loadData / refreshData
+const fetchData = (id, gid) => REQUIRE_AUTH ? fetchSheet(id, gid) : _fetchCSV(id, gid);
+
 async function refreshData() {
   const btn = $('btn-refresh-icon');
   if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
   $('sdot').classList.add('pulse');
   $('slbl').textContent = 'Refreshing…';
   try {
-    RAW.jcs = await fetchSheet(JC_ID, JC_GID);
-    RAW.ss  = await fetchSheet(LB_ID, SS_GID);
-    RAW.db  = await fetchSheet(LB_ID, LB_GID);
-    RAW.vme = await fetchSheet(VME_ID, VME_GID);
+    RAW.jcs = await fetchData(JC_ID, JC_GID);
+    RAW.ss  = await fetchData(LB_ID, SS_GID);
+    RAW.db  = await fetchData(LB_ID, LB_GID);
+    RAW.vme = await fetchData(VME_ID, VME_GID);
     processData();
     buildSupportMap();
     buildFilters();
@@ -884,13 +912,13 @@ async function loadData() {
   $('sdot').classList.add('pulse');
   prog(5); $('lmsg').textContent = 'Fetching job card register…';
   try {
-    RAW.jcs = await fetchSheet(JC_ID, JC_GID);                prog(20);
+    RAW.jcs = await fetchData(JC_ID, JC_GID);                prog(20);
     $('lmsg').textContent = 'Fetching support sheet…';
-    RAW.ss  = await fetchSheet(LB_ID, SS_GID);                prog(40);
+    RAW.ss  = await fetchData(LB_ID, SS_GID);                prog(40);
     $('lmsg').textContent = 'Fetching logbook…';
-    RAW.db  = await fetchSheet(LB_ID, LB_GID);                prog(60);
+    RAW.db  = await fetchData(LB_ID, LB_GID);                prog(60);
     $('lmsg').textContent = 'Fetching VME master data…';
-    RAW.vme = await fetchSheet(VME_ID, VME_GID);              prog(80);
+    RAW.vme = await fetchData(VME_ID, VME_GID);              prog(80);
     $('lmsg').textContent = 'Processing & joining data…';
     processData();                                             prog(100);
     $('slbl').textContent = 'Live · ' + new Date().toLocaleTimeString();
@@ -1624,11 +1652,17 @@ function showPage(name, btn) {
   closeSB();
 }
 
-// Auth screen is shown by default; GIS onload enables the sign-in button.
-// If GIS fails to load (e.g. ad blocker), show a fallback message.
-setTimeout(() => {
-  if(!_tokenClient) showAuthError('Google Sign-In library failed to load. Disable any ad blockers for this page and reload.');
-}, 5000);
+if(REQUIRE_AUTH) {
+  // Auth screen is shown by default; GIS onload enables the sign-in button.
+  // If GIS fails to load (e.g. ad blocker), show a fallback message after 5s.
+  setTimeout(() => {
+    if(!_tokenClient) showAuthError('Google Sign-In library failed to load. Disable any ad blockers for this page and reload.');
+  }, 5000);
+} else {
+  // Open access — skip login screen and load directly via CSV export
+  $('auth-screen').classList.add('hidden');
+  loadData();
+}
 </script>
 </body>
 </html>
