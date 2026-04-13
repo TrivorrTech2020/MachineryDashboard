@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>SGF Workshop Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async onload="onGISLoad()"></script>
 <style>
 :root{
   --bg:#f1f5f9;--sur:#ffffff;--sur2:#f8fafc;--bor:#e2e8f0;
@@ -23,6 +24,22 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14p
 #lmsg{color:var(--mut);font-family:var(--mono);font-size:12px;text-align:center;max-width:300px;line-height:1.7}
 #lprog{width:220px;height:2px;background:var(--bor);border-radius:2px;overflow:hidden}
 #lbar{height:100%;background:var(--acc);width:0%;transition:width .4s ease;border-radius:2px}
+
+/* ── AUTH SCREEN ── */
+#auth-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:201;gap:0}
+#auth-screen.hidden{display:none}
+.auth-card{background:var(--sur);border:1px solid var(--bor);border-radius:14px;padding:36px 40px;max-width:380px;width:calc(100% - 40px);text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.06)}
+.auth-logo-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px}
+.auth-ldot{width:11px;height:11px;border-radius:50%;background:var(--acc)}
+.auth-brand{font-size:15px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--txt)}
+.auth-sub{font-size:11px;color:var(--mut);font-family:var(--mono);margin-bottom:28px}
+.auth-divider{height:1px;background:var(--bor);margin:24px 0}
+.auth-hint{font-size:11px;color:var(--mut);line-height:1.6;margin-top:20px}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:0 16px;height:42px;background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);font-size:13px;font-weight:500;color:var(--txt);cursor:pointer;font-family:var(--sans);transition:all .15s}
+.btn-google:hover{border-color:var(--acc);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.btn-google:disabled{opacity:.5;cursor:not-allowed}
+.auth-error{margin-top:14px;font-size:11px;color:var(--red);font-family:var(--mono);display:none}
+.auth-error.show{display:block}
 
 .mob{display:none;align-items:center;gap:12px;padding:13px 16px;background:var(--sur);border-bottom:1px solid var(--bor);position:sticky;top:0;z-index:50}
 .hbg{background:none;border:none;color:var(--txt);cursor:pointer;padding:4px;display:flex;flex-direction:column;gap:4px}
@@ -242,7 +259,21 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
 </head>
 <body>
 
-<div id="loading">
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo-row"><div class="auth-ldot"></div><div class="auth-brand">SGF Workshop</div></div>
+    <div class="auth-sub">Maintenance Dashboard</div>
+    <div class="auth-divider"></div>
+    <button class="btn-google" id="btn-google" onclick="signIn()" disabled>
+      <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+      Sign in with Google
+    </button>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-hint">Access is restricted to authorised accounts only.<br>Sign in with your SGF Workshop Google account.</div>
+  </div>
+</div>
+
+<div id="loading" style="display:none">
   <div class="ring"></div>
   <div id="lprog"><div id="lbar"></div></div>
   <p id="lmsg">Connecting to Google Sheets…</p>
@@ -617,6 +648,9 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
 </div>
 
 <script>
+// ══ OAUTH — paste your Google Cloud OAuth 2.0 Client ID here ══
+const OAUTH_CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+
 // ══ CONFIG — update SUPPORT_GID after checking your sheet URL ══
 const LB_ID  = '1O4Ix8Y-o4x3vkNw7RFLLJFCXmdYA_8-3pzcpLrPa4tw';
 const LB_GID = '1455115989';      // Database tab
@@ -726,17 +760,6 @@ document.addEventListener('click', function(e) {
   if (!e.target.closest('.sdd') && !e.target.closest('.drng')) closeAllPanels();
 });
 
-function parseCSV(t) {
-  const lines = t.trim().split('\n'), hdr = csvRow(lines[0]);
-  return lines.slice(1)
-    .map(l => { const v=csvRow(l),o={}; hdr.forEach((h,i)=>o[h.trim()]=(v[i]||'').trim()); return o; })
-    .filter(r => Object.values(r).some(v=>v));
-}
-function csvRow(l) {
-  const r=[]; let c='',q=false;
-  for(let i=0;i<l.length;i++){if(l[i]==='"')q=!q;else if(l[i]===','&&!q){r.push(c);c='';}else c+=l[i];}
-  r.push(c); return r;
-}
 function pDate(s) {
   if(!s) return null;
   const mo={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
@@ -755,12 +778,82 @@ function isoDate(d) { return d.toISOString().slice(0,10); }
 function toggleSB(){ $('sb').classList.toggle('open'); $('ov').classList.toggle('show'); }
 function closeSB(){ $('sb').classList.remove('open'); $('ov').classList.remove('show'); }
 
+// ══ AUTH ══
+let _tokenClient = null;
+let _accessToken = null;
+let _tokenExpiry  = 0;
+let _sheetMeta    = {};   // spreadsheetId → { gid: sheetName }
+
+function onGISLoad() {
+  _tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id : OAUTH_CLIENT_ID,
+    scope     : 'https://www.googleapis.com/auth/spreadsheets.readonly',
+    callback  : _handleToken,
+  });
+  $('btn-google').disabled = false;
+}
+
+function _handleToken(resp) {
+  if(resp.error) { showAuthError('Sign-in failed: ' + resp.error); return; }
+  _accessToken = resp.access_token;
+  _tokenExpiry  = Date.now() + (resp.expires_in - 60) * 1000;
+  $('auth-screen').classList.add('hidden');
+  loadData();
+}
+
+function signIn() {
+  if(!_tokenClient){ showAuthError('Google Sign-In library not loaded yet — please wait and try again.'); return; }
+  $('btn-google').disabled = true;
+  _tokenClient.requestAccessToken({ prompt: 'select_account' });
+  setTimeout(() => { $('btn-google').disabled = false; }, 3000);
+}
+
+function showAuthError(msg) {
+  const el = $('auth-error');
+  el.textContent = msg;
+  el.classList.add('show');
+  $('btn-google').disabled = false;
+}
+
+async function _ensureToken() {
+  if(_accessToken && Date.now() < _tokenExpiry) return;
+  // Silent refresh (no prompt if user is already signed in this session)
+  return new Promise((resolve, reject) => {
+    const prev = _tokenClient.callback;
+    _tokenClient.callback = (resp) => {
+      _tokenClient.callback = prev;
+      if(resp.error){ reject(new Error(resp.error)); return; }
+      _accessToken = resp.access_token;
+      _tokenExpiry  = Date.now() + (resp.expires_in - 60) * 1000;
+      resolve();
+    };
+    _tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+async function _resolveSheetName(spreadsheetId, gid) {
+  if(!_sheetMeta[spreadsheetId]) {
+    const url  = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties(sheetId,title)`;
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${_accessToken}` } });
+    const json = await resp.json();
+    if(json.error) throw new Error(json.error.code === 403 ? 'ACCESS_DENIED' : json.error.message);
+    _sheetMeta[spreadsheetId] = {};
+    (json.sheets || []).forEach(s => { _sheetMeta[spreadsheetId][s.properties.sheetId] = s.properties.title; });
+  }
+  return _sheetMeta[spreadsheetId][parseInt(gid)];
+}
+
 // ══ FETCH ══
-async function fetchCSV(id, gid) {
-  const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
-  const r = await fetch(url);
-  if(!r.ok) throw new Error(`HTTP ${r.status} — is the sheet public (Share → Anyone with link → Viewer)?`);
-  return parseCSV(await r.text());
+async function fetchSheet(id, gid) {
+  await _ensureToken();
+  const sheetName = await _resolveSheetName(id, gid);
+  if(!sheetName) throw new Error(`Sheet GID ${gid} not found in spreadsheet ${id}`);
+  const url  = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(sheetName)}`;
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${_accessToken}` } });
+  const json = await resp.json();
+  if(json.error) throw new Error(json.error.code === 403 ? 'ACCESS_DENIED' : json.error.message);
+  const [headers, ...rows] = json.values || [[]];
+  return rows.map(row => Object.fromEntries((headers || []).map((h, i) => [h.trim(), (row[i] ?? '').trim()])));
 }
 
 async function refreshData() {
@@ -769,10 +862,10 @@ async function refreshData() {
   $('sdot').classList.add('pulse');
   $('slbl').textContent = 'Refreshing…';
   try {
-    RAW.jcs = await fetchCSV(JC_ID, JC_GID);
-    RAW.ss  = await fetchCSV(LB_ID, SS_GID);
-    RAW.db  = await fetchCSV(LB_ID, LB_GID);
-    RAW.vme = await fetchCSV(VME_ID, VME_GID);
+    RAW.jcs = await fetchSheet(JC_ID, JC_GID);
+    RAW.ss  = await fetchSheet(LB_ID, SS_GID);
+    RAW.db  = await fetchSheet(LB_ID, LB_GID);
+    RAW.vme = await fetchSheet(VME_ID, VME_GID);
     processData();
     buildSupportMap();
     buildFilters();
@@ -791,23 +884,23 @@ async function loadData() {
   $('sdot').classList.add('pulse');
   prog(5); $('lmsg').textContent = 'Fetching job card register…';
   try {
-    RAW.jcs = await fetchCSV(JC_ID, JC_GID);                prog(20);
+    RAW.jcs = await fetchSheet(JC_ID, JC_GID);                prog(20);
     $('lmsg').textContent = 'Fetching support sheet…';
-    RAW.ss  = await fetchCSV(LB_ID, SS_GID);                prog(40);
+    RAW.ss  = await fetchSheet(LB_ID, SS_GID);                prog(40);
     $('lmsg').textContent = 'Fetching logbook…';
-    RAW.db  = await fetchCSV(LB_ID, LB_GID);                prog(60);
+    RAW.db  = await fetchSheet(LB_ID, LB_GID);                prog(60);
     $('lmsg').textContent = 'Fetching VME master data…';
-    RAW.vme = await fetchCSV(VME_ID, VME_GID);              prog(80);
+    RAW.vme = await fetchSheet(VME_ID, VME_GID);              prog(80);
     $('lmsg').textContent = 'Processing & joining data…';
-    processData();                                           prog(100);
+    processData();                                             prog(100);
     $('slbl').textContent = 'Live · ' + new Date().toLocaleTimeString();
     $('sdot').classList.remove('pulse');
   } catch(e) {
+    const isAccessDenied = e.message === 'ACCESS_DENIED';
     $('loading').innerHTML = `<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:24px 28px;max-width:420px;text-align:center">
-      <div style="color:#fca5a5;font-size:14px;font-weight:600;margin-bottom:8px">Failed to load data</div>
-      <div style="color:#475569;font-size:12px;font-family:var(--mono);margin-bottom:6px;line-height:1.7">${e.message}</div>
-      <div style="color:#64748b;font-size:11px;font-family:var(--mono);margin-bottom:16px">If Support Sheet GID is wrong, update SS_GID in the script.<br>Open the Support Sheet tab → check gid= in the URL.</div>
-      <button class="btn-refresh" onclick="loadData()" style="margin:auto">Try again</button>
+      <div style="color:#b91c1c;font-size:14px;font-weight:600;margin-bottom:8px">${isAccessDenied?'Access denied':'Failed to load data'}</div>
+      <div style="color:#475569;font-size:12px;font-family:var(--mono);margin-bottom:16px;line-height:1.7">${isAccessDenied?'Your Google account does not have permission to view these sheets. Ask the dashboard administrator to add your account.':e.message}</div>
+      <button class="btn-refresh" onclick="${isAccessDenied?'location.reload()':'loadData()'}" style="margin:auto">${isAccessDenied?'Sign in with a different account':'Try again'}</button>
     </div>`;
     return;
   }
@@ -1531,7 +1624,11 @@ function showPage(name, btn) {
   closeSB();
 }
 
-loadData();
+// Auth screen is shown by default; GIS onload enables the sign-in button.
+// If GIS fails to load (e.g. ad blocker), show a fallback message.
+setTimeout(() => {
+  if(!_tokenClient) showAuthError('Google Sign-In library failed to load. Disable any ad blockers for this page and reload.');
+}, 5000);
 </script>
 </body>
 </html>
