@@ -73,9 +73,14 @@ nav{padding:12px 10px;flex:1}
 .sdd-search{width:100%;background:transparent;border:none;border-bottom:1px solid var(--bor);padding:7px 10px;font-size:12px;color:var(--txt);font-family:var(--sans);outline:none}
 .sdd-search::placeholder{color:var(--mut)}
 .sdd-list{max-height:200px;overflow-y:auto}
-.sdd-item{padding:7px 10px;font-size:12px;cursor:pointer;color:var(--sub);transition:background .1s;white-space:nowrap}
+.sdd-item{padding:7px 10px 7px 30px;font-size:12px;cursor:pointer;color:var(--sub);transition:background .1s;white-space:nowrap;position:relative}
 .sdd-item:hover{background:var(--sur);color:var(--txt)}
 .sdd-item.sel{color:var(--acc);background:rgba(59,130,246,.08)}
+.sdd-item.sel::before{content:'✓';position:absolute;left:10px;font-size:11px;font-weight:700;color:var(--acc)}
+.sdd-item:not(.sel)::before{content:'';position:absolute;left:10px;width:10px;height:10px;top:50%;transform:translateY(-50%);border:1px solid var(--bor);border-radius:2px}
+.sdd-item-all{padding:7px 10px;font-size:12px;cursor:pointer;color:var(--sub);transition:background .1s;white-space:nowrap;border-bottom:1px solid var(--bor);margin-bottom:2px}
+.sdd-item-all:hover{background:var(--sur);color:var(--txt)}
+.sdd-item-all.sel{color:var(--acc);font-weight:500}
 /* date range popover */
 .drng{position:relative}
 .drng-trigger{background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);padding:0 10px;height:32px;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--txt);white-space:nowrap;transition:border-color .15s;font-family:var(--sans);user-select:none}
@@ -619,9 +624,16 @@ let D   = { repairs:[], parts:[], ssMap:{}, vmeMap:{}, jcMap:{}, lbIdx:{} };
 let _jcRows = [];
 // Date range state
 let dateFrom = null, dateTo = null, activeQuick = 'all';
-// Searchable dropdown state
+// Searchable dropdown state (each value is an array; ['all'] means no filter)
 const DD_OPTS  = {};
-const DD_STATE = { 'dd-cat':'all', 'dd-vme':'all', 'dd-model':'all', 'dd-loc':'all' };
+const DD_STATE = { 'dd-cat':['all'], 'dd-vme':['all'], 'dd-model':['all'], 'dd-loc':['all'] };
+function ddIsAll(id) { const s=DD_STATE[id]||['all']; return s.length===0||s[0]==='all'; }
+function ddLabel(id) {
+  if(ddIsAll(id)) return (DD_OPTS[id]||[{label:'All'}])[0].label;
+  const sel=DD_STATE[id];
+  if(sel.length===1){ const o=(DD_OPTS[id]||[]).find(x=>x.value===sel[0]); return o?o.label:sel[0]; }
+  return sel.length+' selected';
+}
 
 // ══ UTILS ══
 const $ = id => document.getElementById(id);
@@ -630,27 +642,34 @@ const prog = p => $('lbar').style.width = p + '%';
 // ══ SEARCHABLE DROPDOWN ══
 function populateDD(id, options) {
   DD_OPTS[id] = options;
-  const cur = DD_STATE[id] || 'all';
-  if (cur !== 'all' && !options.find(o => o.value === cur)) {
-    DD_STATE[id] = 'all';
-    const vEl = $(id) && $(id).querySelector('.sdd-val');
-    if (vEl && options[0]) vEl.textContent = options[0].label;
+  // Remove any selections that no longer exist in options
+  const vals = options.map(o=>o.value);
+  if(!ddIsAll(id)){
+    const still = DD_STATE[id].filter(v => vals.includes(v));
+    DD_STATE[id] = still.length ? still : ['all'];
   }
+  const vEl = $(id) && $(id).querySelector('.sdd-val');
+  if(vEl) vEl.textContent = ddLabel(id);
   renderDDList(id, '');
 }
 function renderDDList(id, q) {
-  const opts = DD_OPTS[id] || [], cur = DD_STATE[id] || 'all';
-  const filtered = q ? opts.filter(o => o.label.toLowerCase().includes(q.toLowerCase())) : opts;
+  const opts = DD_OPTS[id] || [];
+  // Separate "All" option from the rest
+  const allOpt = opts[0];
+  const rest = opts.slice(1);
+  const filtered = q ? rest.filter(o => o.label.toLowerCase().includes(q.toLowerCase())) : rest;
   const el = $(id + '-list'); if (!el) return;
-  if (!filtered.length) {
-    el.innerHTML = '<div style="padding:8px 10px;font-size:11px;color:var(--mut)">No matches</div>';
+  if (!filtered.length && q) {
+    el.innerHTML = (allOpt?`<div class="sdd-item-all${ddIsAll(id)?' sel':''}">${allOpt.label}</div>`:'') +
+      '<div style="padding:8px 10px;font-size:11px;color:var(--mut)">No matches</div>';
+    el.querySelector('.sdd-item-all')?.addEventListener('click', () => selectDD(id, 'all', allOpt.label));
     return;
   }
-  el.innerHTML = filtered.map(o =>
-    `<div class="sdd-item${cur === o.value ? ' sel' : ''}">${o.label}</div>`
-  ).join('');
+  el.innerHTML = (allOpt ? `<div class="sdd-item-all${ddIsAll(id)?' sel':''}">${allOpt.label}</div>` : '') +
+    filtered.map(o => `<div class="sdd-item${!ddIsAll(id)&&DD_STATE[id].includes(o.value)?' sel':''}">${o.label}</div>`).join('');
+  el.querySelector('.sdd-item-all')?.addEventListener('click', () => selectDD(id, 'all', allOpt?.label||'All'));
   el.querySelectorAll('.sdd-item').forEach((item, i) => {
-    item.addEventListener('click', () => selectDD(id, filtered[i].value, filtered[i].label));
+    item.addEventListener('click', e => { e.stopPropagation(); selectDD(id, filtered[i].value, filtered[i].label); });
   });
 }
 function toggleDD(id) {
@@ -664,10 +683,20 @@ function toggleDD(id) {
 }
 function filterDD(id, q) { renderDDList(id, q); }
 function selectDD(id, value, label) {
-  DD_STATE[id] = value;
+  if(value === 'all') {
+    DD_STATE[id] = ['all'];
+  } else {
+    const cur = ddIsAll(id) ? [] : [...DD_STATE[id]];
+    const idx = cur.indexOf(value);
+    if(idx >= 0) cur.splice(idx, 1); else cur.push(value);
+    DD_STATE[id] = cur.length ? cur : ['all'];
+  }
   const vEl = $(id) && $(id).querySelector('.sdd-val');
-  if (vEl) vEl.textContent = label;
-  closeAllPanels();
+  if(vEl) vEl.textContent = ddLabel(id);
+  // Re-render list in place (keep panel open for multi-select)
+  renderDDList(id, $(id)?.querySelector('.sdd-search')?.value || '');
+  // Close only when "All" is chosen
+  if(value === 'all') closeAllPanels();
   onFilterChange();
 }
 function toggleDatePanel() {
@@ -952,7 +981,7 @@ function onFilterChange() { applyFilters(); }
 
 function resetFilters() {
   ['dd-cat','dd-vme','dd-model','dd-loc'].forEach(id => {
-    DD_STATE[id] = 'all';
+    DD_STATE[id] = ['all'];
     const vEl = $(id) && $(id).querySelector('.sdd-val');
     if (vEl && DD_OPTS[id]) vEl.textContent = DD_OPTS[id][0].label;
     renderDDList(id, '');
@@ -966,13 +995,11 @@ function resetFilters() {
 }
 
 function getFiltered() {
-  const cat=DD_STATE['dd-cat']||'all', vme=DD_STATE['dd-vme']||'all',
-        mdl=DD_STATE['dd-model']||'all', loc=DD_STATE['dd-loc']||'all';
   return D.repairs.filter(r => {
-    if(cat!=='all' && r.category!==cat) return false;
-    if(vme!=='all' && r.vmeType!==vme) return false;
-    if(mdl!=='all' && r.model!==mdl) return false;
-    if(loc!=='all' && r.loc!==loc) return false;
+    if(!ddIsAll('dd-cat') && !DD_STATE['dd-cat'].includes(r.category)) return false;
+    if(!ddIsAll('dd-vme') && !DD_STATE['dd-vme'].includes(r.vmeType))  return false;
+    if(!ddIsAll('dd-model') && !DD_STATE['dd-model'].includes(r.model)) return false;
+    if(!ddIsAll('dd-loc') && !DD_STATE['dd-loc'].includes(r.loc))       return false;
     if(dateFrom && r.date && r.date < dateFrom) return false;
     if(dateTo   && r.date && r.date > dateTo)   return false;
     return true;
@@ -1034,14 +1061,14 @@ function rOverview(f) {
   const mtbf=gaps.length?gaps.reduce((s,g)=>s+g.g,0)/gaps.length:0;
   const qrPct=gaps.length?Math.round(gaps.filter(g=>g.g<=7).length/gaps.length*100):0;
 
-  const _vme=DD_STATE['dd-vme']||'all',_cat=DD_STATE['dd-cat']||'all',_mdl=DD_STATE['dd-model']||'all',_loc=DD_STATE['dd-loc']||'all';
-  const _activeFilters=[_vme!=='all'&&_vme,_cat!=='all'&&_cat,_mdl!=='all'&&_mdl,_loc!=='all'&&_loc].filter(Boolean);
+  const _anyActive = !ddIsAll('dd-vme')||!ddIsAll('dd-cat')||!ddIsAll('dd-model')||!ddIsAll('dd-loc');
 
   $('o1').textContent=f.length.toLocaleString();
   $('o2').textContent=openAll.length;
-  if(_activeFilters.length){
+  if(_anyActive){
     const openFiltered=f.filter(r=>(r.status||'').toLowerCase()==='open').length;
-    const lbl=_activeFilters.length===1?_activeFilters[0]:'filters';
+    const allSel=[...DD_STATE['dd-cat'],...DD_STATE['dd-vme'],...DD_STATE['dd-model'],...DD_STATE['dd-loc']].filter(v=>v!=='all');
+    const lbl=allSel.length===1?allSel[0]:'filters';
     $('o2s').textContent='of which '+openFiltered+' are '+lbl;
   } else {
     $('o2s').textContent=Math.round(openAll.length/Math.max(RAW.jcs.length,1)*100)+'% of total';
