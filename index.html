@@ -1561,7 +1561,50 @@ function rRetain(f) {
 let _jcOpenOnly = false;
 
 function rJobCards(f) {
-  _jcRows = [...f].sort((a,b) => (b.date||0) - (a.date||0));
+  // Build a lookup of repair data (cost, parts, svc, model etc.) by jcn
+  const repMap = {};
+  D.repairs.forEach(r => { repMap[r.jcn] = r; });
+
+  // Drive from RAW.jcs so ALL job cards appear, not just those with logbook entries
+  _jcRows = RAW.jcs.map(r => {
+    const no  = toN(r['Job Card No']); if(!no) return null;
+    const vno = (r['VME No']||'').trim();
+    const ss  = D.ssMap[vno] || {};
+    const vm  = D.vmeMap[vno] || {};
+    const rep = repMap[no] || {};
+    const start = pDate(r['STARTING DATE']||r['STARTING DATE ']);
+    const close = pDate(r['CLOSE DATE']||r['CLOSE DATE ']);
+    let dt = null;
+    if(start && close){ const d=Math.round((close-start)/86400000); if(d>=0&&d<=180) dt=d; }
+    // Skip scrap/sold
+    if(['scrap','sold'].includes((vm.status||'').toLowerCase())) return null;
+    return {
+      jcn     : no,
+      vno,
+      status  : r['Status']||'',
+      loc     : (r['Location']||'').trim().toUpperCase().replace(/\s+/g,' '),
+      sup     : r['Job Supervisor']||'',
+      date    : start,
+      dt,
+      cost    : rep.cost  || 0,
+      pc      : rep.pc    || 0,
+      svc     : rep.svc   || '',
+      category: ss.category || rep.category || '',
+      vmeType : ss.vmeType  || rep.vmeType  || '',
+      model   : ss.model    || rep.model    || '',
+    };
+  }).filter(Boolean)
+    .filter(r => {
+      if(!ddIsAll('dd-cat')   && !DD_STATE['dd-cat'].includes(r.category))  return false;
+      if(!ddIsAll('dd-vme')   && !DD_STATE['dd-vme'].includes(r.vmeType))   return false;
+      if(!ddIsAll('dd-model') && !DD_STATE['dd-model'].includes(r.model))   return false;
+      if(!ddIsAll('dd-loc')   && !DD_STATE['dd-loc'].includes(r.loc))       return false;
+      if(dateFrom && r.date && r.date < dateFrom) return false;
+      if(dateTo   && r.date && r.date > dateTo)   return false;
+      return true;
+    })
+    .sort((a,b) => (b.date||0) - (a.date||0));
+
   filterJCTable($('jc-search')?.value || '');
 }
 
