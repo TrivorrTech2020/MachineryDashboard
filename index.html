@@ -419,6 +419,9 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
         </div>
         <div class="fbtn-row">
           <button class="btn-reset" onclick="resetFilters()">Reset</button>
+          <button class="jc-toggle" id="ss-toggle" onclick="toggleScrapSold()" title="Include scrapped and sold assets">
+            <span class="jt-sw"></span>Incl. scrap / sold
+          </button>
         </div>
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-bottom:0">
           <span class="fbar-stats" id="fstats">Loading…</span>
@@ -672,8 +675,9 @@ const VME_ID  = '1Vvzbh4oDFtbE2btO-rJaKR1fHzmJsv6fe9FKSqqnRBY';
 const VME_GID = '1293626573';     // VME master tab
 
 let RAW = { db:[], ss:[], jcs:[], vme:[] };
-let D   = { repairs:[], parts:[], ssMap:{}, vmeMap:{}, jcMap:{}, lbIdx:{} };
+let D   = { repairs:[], parts:[], ssMap:{}, vmeMap:{}, jcMap:{}, lbIdx:{}, scrapSold:new Set() };
 let _jcRows = [];
+let showScrapSold = false;
 // Date range state
 let dateFrom = null, dateTo = null, activeQuick = 'all';
 // Searchable dropdown state (each value is an array; ['all'] means no filter)
@@ -1010,10 +1014,8 @@ function processData() {
   buildSupportMap();
   buildVMEMap();
 
-  // Remove scrap/sold VMEs from all raw sources once — everything downstream is automatically clean
-  const _ss = new Set(Object.entries(D.vmeMap).filter(([,v])=>['scrap','sold'].includes(v.status)).map(([k])=>k));
-  RAW.jcs = RAW.jcs.filter(r => !_ss.has((r['VME No']||'').trim()));
-  RAW.db  = RAW.db.filter(r  => !_ss.has((r['Veh/Mach/Equip No']||'').trim()));
+  // Build scrap/sold set for optional exclusion (controlled by showScrapSold toggle)
+  D.scrapSold = new Set(Object.entries(D.vmeMap).filter(([,v])=>['scrap','sold'].includes(v.status)).map(([k])=>k));
 
   // JCS map
   const jcMap = {};
@@ -1158,13 +1160,16 @@ function resetFilters() {
   document.querySelectorAll('.qb').forEach(b=>b.classList.remove('on'));
   document.querySelector('.qb:last-child').classList.add('on');
   $('drng-label').textContent='All time';
+  showScrapSold = false;
+  const ssBtn = $('ss-toggle'); if(ssBtn) ssBtn.classList.remove('on');
   applyFilters();
 }
 
 function getFiltered() {
   return D.repairs.filter(r => {
-    if(!ddIsAll('dd-cat') && !DD_STATE['dd-cat'].includes(r.category)) return false;
-    if(!ddIsAll('dd-vme') && !DD_STATE['dd-vme'].includes(r.vmeType))  return false;
+    if(!showScrapSold && D.scrapSold.has(r.vno))                        return false;
+    if(!ddIsAll('dd-cat') && !DD_STATE['dd-cat'].includes(r.category))  return false;
+    if(!ddIsAll('dd-vme') && !DD_STATE['dd-vme'].includes(r.vmeType))   return false;
     if(!ddIsAll('dd-model') && !DD_STATE['dd-model'].includes(r.model)) return false;
     if(!ddIsAll('dd-loc') && !DD_STATE['dd-loc'].includes(r.loc))       return false;
     if(dateFrom && r.date && r.date < dateFrom) return false;
@@ -1223,7 +1228,12 @@ function calcMTBF(rr) {
 function rOverview(f) {
   const rr=f.filter(r=>r.svc==='Running Repair'),sv=f.filter(r=>r.svc==='Service'||r.svc==='SERVICE');
   const dtV=f.filter(r=>r.dt!==null),avgDt=dtV.length?dtV.reduce((s,r)=>s+r.dt,0)/dtV.length:0;
-  const openAll=RAW.jcs.filter(r=>(r['Status']||'').toLowerCase()==='open' && toN(r['Job Card No']));
+  const openAll=RAW.jcs.filter(r=>{
+    if((r['Status']||'').toLowerCase()!=='open') return false;
+    if(!toN(r['Job Card No'])) return false;
+    if(!showScrapSold && D.scrapSold.has((r['VME No']||'').trim())) return false;
+    return true;
+  });
   const gaps=calcMTBF(rr);
   const mtbf=gaps.length?gaps.reduce((s,g)=>s+g.g,0)/gaps.length:0;
   const qrPct=gaps.length?Math.round(gaps.filter(g=>g.g<=7).length/gaps.length*100):0;
@@ -1575,6 +1585,7 @@ function rJobCards(f) {
   _jcRows = RAW.jcs.map(r => {
     const no  = toN(r['Job Card No']); if(!no) return null;
     const vno = (r['VME No']||'').trim();
+    if(!showScrapSold && D.scrapSold.has(vno)) return null;
     const ss  = D.ssMap[vno] || {};
     const vm  = D.vmeMap[vno] || {};
     const rep = repMap[no] || {};
@@ -1610,6 +1621,13 @@ function rJobCards(f) {
     .sort((a,b) => (b.date||0) - (a.date||0));
 
   filterJCTable($('jc-search')?.value || '');
+}
+
+function toggleScrapSold() {
+  showScrapSold = !showScrapSold;
+  const btn = $('ss-toggle');
+  if(btn) btn.classList.toggle('on', showScrapSold);
+  applyFilters();
 }
 
 function toggleOpenOnly() {
