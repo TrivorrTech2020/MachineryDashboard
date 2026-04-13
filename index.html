@@ -1010,6 +1010,11 @@ function processData() {
   buildSupportMap();
   buildVMEMap();
 
+  // Remove scrap/sold VMEs from all raw sources once — everything downstream is automatically clean
+  const _ss = new Set(Object.entries(D.vmeMap).filter(([,v])=>['scrap','sold'].includes(v.status)).map(([k])=>k));
+  RAW.jcs = RAW.jcs.filter(r => !_ss.has((r['VME No']||'').trim()));
+  RAW.db  = RAW.db.filter(r  => !_ss.has((r['Veh/Mach/Equip No']||'').trim()));
+
   // JCS map
   const jcMap = {};
   RAW.jcs.forEach(r => {
@@ -1077,10 +1082,6 @@ function processData() {
       company   : vm.company   || '',
       machineAge: vm.age !== undefined ? vm.age : null,
     };
-  }).filter(r => {
-    const vm = D.vmeMap[r.vno];
-    if (!vm) return true; // equipment or unknown — include
-    return !['scrap','sold'].includes(vm.status);
   });
 
   // Parts frequency
@@ -1222,12 +1223,7 @@ function calcMTBF(rr) {
 function rOverview(f) {
   const rr=f.filter(r=>r.svc==='Running Repair'),sv=f.filter(r=>r.svc==='Service'||r.svc==='SERVICE');
   const dtV=f.filter(r=>r.dt!==null),avgDt=dtV.length?dtV.reduce((s,r)=>s+r.dt,0)/dtV.length:0;
-  const openAll=RAW.jcs.filter(r=>{
-    if((r['Status']||'').toLowerCase()!=='open') return false;
-    const vm=D.vmeMap[(r['VME No']||'').trim()];
-    if(vm&&['scrap','sold'].includes(vm.status)) return false;
-    return true;
-  });
+  const openAll=RAW.jcs.filter(r=>(r['Status']||'').toLowerCase()==='open');
   const gaps=calcMTBF(rr);
   const mtbf=gaps.length?gaps.reduce((s,g)=>s+g.g,0)/gaps.length:0;
   const qrPct=gaps.length?Math.round(gaps.filter(g=>g.g<=7).length/gaps.length*100):0;
@@ -1586,8 +1582,6 @@ function rJobCards(f) {
     const close = pDate(r['CLOSE DATE']||r['CLOSE DATE ']);
     let dt = null;
     if(start && close){ const d=Math.round((close-start)/86400000); if(d>=0&&d<=180) dt=d; }
-    // Skip scrap/sold
-    if(['scrap','sold'].includes((vm.status||'').toLowerCase())) return null;
     return {
       jcn     : no,
       vno,
