@@ -654,10 +654,17 @@ function populateDD(id, options) {
 }
 function renderDDList(id, q) {
   const opts = DD_OPTS[id] || [];
-  // Separate "All" option from the rest
   const allOpt = opts[0];
   const rest = opts.slice(1);
-  const filtered = q ? rest.filter(o => o.label.toLowerCase().includes(q.toLowerCase())) : rest;
+  let filtered = q ? rest.filter(o => o.label.toLowerCase().includes(q.toLowerCase())) : rest;
+  // When not searching, float selected items to the top
+  if (!q && !ddIsAll(id)) {
+    const sel = DD_STATE[id];
+    filtered = [...filtered].sort((a, b) => {
+      const as = sel.includes(a.value), bs = sel.includes(b.value);
+      return as === bs ? 0 : as ? -1 : 1;
+    });
+  }
   const el = $(id + '-list'); if (!el) return;
   if (!filtered.length && q) {
     el.innerHTML = (allOpt?`<div class="sdd-item-all${ddIsAll(id)?' sel':''}">${allOpt.label}</div>`:'') +
