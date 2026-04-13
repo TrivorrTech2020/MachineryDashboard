@@ -1223,7 +1223,7 @@ function calcMTBF(rr) {
 function rOverview(f) {
   const rr=f.filter(r=>r.svc==='Running Repair'),sv=f.filter(r=>r.svc==='Service'||r.svc==='SERVICE');
   const dtV=f.filter(r=>r.dt!==null),avgDt=dtV.length?dtV.reduce((s,r)=>s+r.dt,0)/dtV.length:0;
-  const openAll=RAW.jcs.filter(r=>(r['Status']||'').toLowerCase()==='open');
+  const openAll=RAW.jcs.filter(r=>(r['Status']||'').toLowerCase()==='open' && toN(r['Job Card No']));
   const gaps=calcMTBF(rr);
   const mtbf=gaps.length?gaps.reduce((s,g)=>s+g.g,0)/gaps.length:0;
   const qrPct=gaps.length?Math.round(gaps.filter(g=>g.g<=7).length/gaps.length*100):0;
