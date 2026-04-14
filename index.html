@@ -347,6 +347,10 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
         <svg class="nic" fill="none" viewBox="0 0 16 16"><rect x="1.5" y="6" width="13" height="8.5" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 9h13" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 6V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="12" x2="10" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
         Inventory
       </button>
+      <button class="ni" onclick="showPage('service',this)">
+        <svg class="nic" fill="none" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Service
+      </button>
     </nav>
     <div class="sfooter">
       <div class="sbadge"><div class="sdot" id="sdot"></div><span id="slbl">Connecting…</span></div>
@@ -705,6 +709,42 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
       </div>
     </div>
 
+    <!-- ══ SERVICE ══ -->
+    <div class="page" id="page-service">
+      <div class="kg c4">
+        <div class="kpi"><div class="kt" style="background:var(--red)"></div><div class="kl">Overdue</div><div class="kv" style="color:var(--red)" id="sv-k1">—</div><div class="kd">past service interval</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--amb)"></div><div class="kl">Due soon</div><div class="kv" style="color:var(--amb)" id="sv-k2">—</div><div class="kd">within 10% of interval</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--grn)"></div><div class="kl">Up to date</div><div class="kv" style="color:var(--grn)" id="sv-k3">—</div><div class="kd">within service interval</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--sub)"></div><div class="kl">No reading data</div><div class="kv" id="sv-k4">—</div><div class="kd">reading not yet recorded</div></div>
+      </div>
+      <div class="jc-toolbar" style="margin-bottom:10px">
+        <input class="jc-search" id="sv-search" type="search" placeholder="Search VME No, model, VME type…" oninput="svcSearch(this.value)">
+        <button class="qb on"  id="sv-s-all"      onclick="setSvcStatus('all')"     >All</button>
+        <button class="qb"     id="sv-s-overdue"  onclick="setSvcStatus('overdue')" style="border-color:rgba(239,68,68,.3);color:#b91c1c">Overdue</button>
+        <button class="qb"     id="sv-s-due-soon" onclick="setSvcStatus('due-soon')" style="border-color:rgba(245,158,11,.3);color:#b45309">Due soon</button>
+        <button class="qb"     id="sv-s-ok"       onclick="setSvcStatus('ok')"      style="border-color:rgba(16,185,129,.3);color:#047857">OK</button>
+        <span class="jc-count" id="sv-count"></span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="tw"><table><thead><tr>
+          <th>VME No</th><th>Model</th><th>VME Type</th><th>Unit</th>
+          <th style="text-align:right">Interval</th>
+          <th style="text-align:right">Current Reading</th>
+          <th style="text-align:right">Last Serviced At</th>
+          <th>Last Service Date</th>
+          <th style="text-align:right">Next Due At</th>
+          <th style="text-align:right">Remaining</th>
+          <th>Progress</th>
+          <th>Status</th>
+        </tr></thead><tbody id="sv-tbody"></tbody></table></div>
+      </div>
+      <div class="inv-note">
+        Current reading is taken from the Current Reading (VME) sheet or the logbook — whichever has the more recent entry.
+        Last service is the most recent logbook entry with Service Type = Service that includes a Meter Reading.
+        Due soon = within 10% of the service interval remaining.
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -741,9 +781,10 @@ const JC_ID  = '1TZoNjqZljQSQTfRcYquzoIPnYBcsO7aOEZs9Ko4hLPA';
 const JC_GID = '0';               // JCS tab
 const VME_ID  = '1Vvzbh4oDFtbE2btO-rJaKR1fHzmJsv6fe9FKSqqnRBY';
 const VME_GID = '1293626573';     // VME master tab
+const CR_GID  = '421078060';      // Current Reading (VME) tab
 
-let RAW = { db:[], ss:[], jcs:[], vme:[] };
-let D   = { repairs:[], parts:[], ssMap:{}, vmeMap:{}, jcMap:{}, lbIdx:{}, scrapSold:new Set(), inventorySkus:[] };
+let RAW = { db:[], ss:[], jcs:[], vme:[], cr:[] };
+let D   = { repairs:[], parts:[], ssMap:{}, vmeMap:{}, jcMap:{}, lbIdx:{}, scrapSold:new Set(), inventorySkus:[], serviceSchedule:[] };
 let _jcRows = [];
 let showScrapSold = false;
 // Date range state
@@ -996,6 +1037,7 @@ async function refreshData() {
     RAW.ss  = await fetchData(LB_ID, SS_GID);
     RAW.db  = await fetchData(LB_ID, LB_GID);
     RAW.vme = await fetchData(VME_ID, VME_GID);
+    RAW.cr  = await fetchData(VME_ID, CR_GID);
     processData();
     buildSupportMap();
     buildFilters();
@@ -1014,13 +1056,15 @@ async function loadData() {
   $('sdot').classList.add('pulse');
   prog(5); $('lmsg').textContent = 'Fetching job card register…';
   try {
-    RAW.jcs = await fetchData(JC_ID, JC_GID);                prog(20);
+    RAW.jcs = await fetchData(JC_ID, JC_GID);                prog(18);
     $('lmsg').textContent = 'Fetching support sheet…';
-    RAW.ss  = await fetchData(LB_ID, SS_GID);                prog(40);
+    RAW.ss  = await fetchData(LB_ID, SS_GID);                prog(34);
     $('lmsg').textContent = 'Fetching logbook…';
-    RAW.db  = await fetchData(LB_ID, LB_GID);                prog(60);
+    RAW.db  = await fetchData(LB_ID, LB_GID);                prog(52);
     $('lmsg').textContent = 'Fetching VME master data…';
-    RAW.vme = await fetchData(VME_ID, VME_GID);              prog(80);
+    RAW.vme = await fetchData(VME_ID, VME_GID);              prog(70);
+    $('lmsg').textContent = 'Fetching current readings…';
+    RAW.cr  = await fetchData(VME_ID, CR_GID);               prog(88);
     $('lmsg').textContent = 'Processing & joining data…';
     processData();                                             prog(100);
     $('slbl').textContent = 'Live · ' + new Date().toLocaleTimeString();
@@ -1072,8 +1116,10 @@ function buildVMEMap() {
     const year    = modelYr || regYr;
     D.vmeMap[vno] = {
       status,
-      age    : year ? currentYear - year : null,
-      company: (r['Company']||'').trim(),
+      age        : year ? currentYear - year : null,
+      company    : (r['Company']||'').trim(),
+      svcType    : (r['Service Type']||'').trim(),       // 'Hrs' or 'Kms'
+      svcInterval: toN(r['Service Frequency']) || null,  // number
     };
   });
 }
@@ -1161,6 +1207,7 @@ function processData() {
   D.parts = Object.entries(pf).sort((a,b)=>b[1]-a[1]).slice(0,20);
 
   buildInventorySkus();
+  buildServiceSchedule();
 }
 
 // ══ INVENTORY DATA ══
@@ -1276,6 +1323,82 @@ function buildInventorySkus() {
   });
 
   D.inventorySkus = skus;
+}
+
+// ══ SERVICE SCHEDULE ══
+function buildServiceSchedule() {
+  // Latest current reading per VME from Current Reading tab (by Timestamp)
+  const crMap = {};
+  RAW.cr.forEach(r => {
+    const vno = (r['Veh/Mach/Equip No']||'').trim(); if(!vno) return;
+    const ts  = pDate(r['Timestamp']);
+    const val = toN(r['Enter New Reading']);
+    if(val === null || val <= 0) return;
+    if(!crMap[vno] || (ts && (!crMap[vno].ts || ts > crMap[vno].ts)))
+      crMap[vno] = { val, ts, loc: (r['Location']||'').trim(), driver: (r['Driver / Incharge']||'').trim() };
+  });
+
+  // Latest meter reading per VME from logbook (any entry with Meter Reading)
+  const lbReadMap = {};
+  RAW.db.forEach(r => {
+    const vno = (r['Veh/Mach/Equip No']||'').trim(); if(!vno) return;
+    const val = toN(r['Meter Reading']);
+    if(val === null || val <= 0) return;
+    const date = pDate(r['Date']);
+    if(!lbReadMap[vno] || (date && (!lbReadMap[vno].date || date > lbReadMap[vno].date)))
+      lbReadMap[vno] = { val, date };
+  });
+
+  // Last SERVICE entry per VME from logbook (with meter reading)
+  const lastSvcMap = {};
+  RAW.db.forEach(r => {
+    const vno = (r['Veh/Mach/Equip No']||'').trim(); if(!vno) return;
+    const svc = (r['Service Type']||'').trim();
+    if(svc !== 'Service' && svc.toUpperCase() !== 'SERVICE') return;
+    const val  = toN(r['Meter Reading']);
+    const date = pDate(r['Date']); if(!date) return;
+    if(!lastSvcMap[vno] || date > lastSvcMap[vno].date)
+      lastSvcMap[vno] = { val, date };
+  });
+
+  D.serviceSchedule = Object.entries(D.vmeMap)
+    .filter(([, v]) => v.svcInterval && v.svcType)
+    .map(([vno, v]) => {
+      const ss = D.ssMap[vno] || {};
+
+      // Current reading = more recent of CR tab vs logbook
+      const cr = crMap[vno], lb = lbReadMap[vno];
+      let curVal = null, curDate = null;
+      if(cr && lb) {
+        if(!lb.date || (cr.ts && cr.ts >= lb.date)) { curVal = cr.val; curDate = cr.ts; }
+        else { curVal = lb.val; curDate = lb.date; }
+      } else if(cr) { curVal = cr.val; curDate = cr.ts; }
+        else if(lb) { curVal = lb.val; curDate = lb.date; }
+
+      const lastSvc = lastSvcMap[vno] || null;
+      const lastSvcVal  = lastSvc?.val  ?? null;
+      const lastSvcDate = lastSvc?.date ?? null;
+
+      let nextDue = null, remaining = null, pctDone = null;
+      let status = 'no-data';
+      if(lastSvcVal !== null) {
+        nextDue = lastSvcVal + v.svcInterval;
+        if(curVal !== null) {
+          remaining = nextDue - curVal;
+          pctDone   = Math.min(1, (curVal - lastSvcVal) / v.svcInterval);
+          status    = remaining <= 0 ? 'overdue' : (remaining / v.svcInterval) <= 0.1 ? 'due-soon' : 'ok';
+        }
+      }
+
+      return { vno, model: ss.model||'', vmeType: ss.vmeType||'', category: ss.category||'',
+               svcType: v.svcType, svcInterval: v.svcInterval,
+               curVal, curDate, lastSvcVal, lastSvcDate, nextDue, remaining, pctDone, status,
+               vmStatus: v.status };
+    })
+    .sort((a, b) => {
+      const o = { overdue:0, 'due-soon':1, 'no-data':2, ok:3 };
+      return (o[a.status]??4) - (o[b.status]??4) || (a.remaining??999999) - (b.remaining??999999);
+    });
 }
 
 // ══ FILTER BUILD ══
@@ -1780,6 +1903,10 @@ function rRetain(f) {
   </tr>`).join('');
 }
 
+// ══ SERVICE STATE ══
+let _svcSearch = '';
+let _svcStatus = 'all';
+
 // ══ HEATMAP STATE ══
 let _heatMode = 'both';
 
@@ -2044,15 +2171,87 @@ function setInvVme(v) {
   rInventory();
 }
 
+// ══ SERVICE RENDER ══
+function rService() {
+  const all = (D.serviceSchedule || []).filter(s => showScrapSold || !D.scrapSold.has(s.vno));
+
+  $('sv-k1').textContent = all.filter(s => s.status === 'overdue').length;
+  $('sv-k2').textContent = all.filter(s => s.status === 'due-soon').length;
+  $('sv-k3').textContent = all.filter(s => s.status === 'ok').length;
+  $('sv-k4').textContent = all.filter(s => s.status === 'no-data').length;
+
+  const q = (_svcSearch || '').toLowerCase().trim();
+  let rows = all;
+  if(_svcStatus !== 'all') rows = rows.filter(s => s.status === _svcStatus);
+  if(q) rows = rows.filter(s =>
+    s.vno.toLowerCase().includes(q) ||
+    (s.model||'').toLowerCase().includes(q) ||
+    (s.vmeType||'').toLowerCase().includes(q)
+  );
+
+  $('sv-count').textContent = rows.length.toLocaleString() + ' machines';
+
+  if(!rows.length) {
+    $('sv-tbody').innerHTML = '<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--mut);font-size:12px">No machines match.</td></tr>';
+    return;
+  }
+
+  const fdate = d => d ? d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+  const fnum  = n => n !== null && n !== undefined ? Math.round(n).toLocaleString() : '—';
+
+  $('sv-tbody').innerHTML = rows.map(s => {
+    const [bc, bl] = s.status === 'overdue'  ? ['br2','Overdue']
+                   : s.status === 'due-soon' ? ['bam','Due soon']
+                   : s.status === 'ok'       ? ['bgr','OK']
+                   : ['bbl','No data'];
+    const remStyle = s.status === 'overdue' ? 'color:var(--red);font-weight:600'
+                   : s.status === 'due-soon' ? 'color:var(--amb);font-weight:600' : '';
+    const remStr = s.remaining === null ? '—'
+                 : s.remaining <= 0 ? Math.abs(Math.round(s.remaining)).toLocaleString() + ' overdue'
+                 : fnum(s.remaining);
+
+    // Mini progress bar (% through current interval)
+    const pct = s.pctDone !== null ? Math.min(1, Math.max(0, s.pctDone)) : null;
+    const barColor = s.status === 'overdue' ? 'var(--red)' : s.status === 'due-soon' ? 'var(--amb)' : 'var(--grn)';
+    const progBar = pct !== null
+      ? `<div style="width:70px;height:6px;background:var(--sur2);border-radius:3px;border:1px solid var(--bor)"><div style="width:${Math.round(pct*100)}%;height:100%;background:${barColor};border-radius:3px"></div></div>`
+      : '<span style="color:var(--mut);font-size:10px">—</span>';
+
+    return `<tr>
+      <td style="font-family:var(--mono);font-weight:600;color:var(--acc)">${s.vno}</td>
+      <td>${s.model||'—'}</td>
+      <td style="color:var(--sub);font-size:11px">${s.vmeType||'—'}</td>
+      <td style="color:var(--mut);font-size:11px">${s.svcType}</td>
+      <td class="n">${fnum(s.svcInterval)}</td>
+      <td class="n">${fnum(s.curVal)}<br><span style="font-size:9px;color:var(--mut);font-family:var(--sans)">${s.curDate?fdate(s.curDate):''}</span></td>
+      <td class="n">${fnum(s.lastSvcVal)}</td>
+      <td style="color:var(--sub);font-size:11px">${fdate(s.lastSvcDate)}</td>
+      <td class="n">${fnum(s.nextDue)}</td>
+      <td class="n" style="${remStyle}">${remStr}</td>
+      <td style="padding-right:10px">${progBar}</td>
+      <td><span class="b ${bc}">${bl}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function svcSearch(q) { _svcSearch = q; rService(); }
+
+function setSvcStatus(s) {
+  _svcStatus = s;
+  ['all','overdue','due-soon','ok'].forEach(v => $('sv-s-'+v)?.classList.toggle('on', v === s));
+  rService();
+}
+
 // ══ PAGE NAV ══
 function showPage(name, btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   $('page-'+name).classList.add('active');
   if(btn) btn.classList.add('active');
-  const titles={overview:'Overview',machines:'Machine health',downtime:'Downtime analysis',costs:'Cost & parts',alerts:'Alerts & actions',retain:'Fleet retention',jobcards:'Job cards',inventory:'Inventory'};
+  const titles={overview:'Overview',machines:'Machine health',downtime:'Downtime analysis',costs:'Cost & parts',alerts:'Alerts & actions',retain:'Fleet retention',jobcards:'Job cards',inventory:'Inventory',service:'Service schedule'};
   $('ph').textContent=titles[name]||name;
   if(name==='inventory') rInventory();
+  if(name==='service') rService();
   closeSB();
 }
 
