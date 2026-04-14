@@ -1629,12 +1629,6 @@ function desigMonthChart(id, months, data, desigs) {
     const mi = months.indexOf(mk);
     const total = totals[mi];
 
-    // Per-designation counts row below month label
-    const counts = desigs.map((d,i) => {
-      const v = data[mk]?.[d]||0;
-      return `<div style="font-size:9px;font-family:var(--mono);color:${colOf(d,i)};font-weight:600;line-height:1.4;text-align:center">${v||'·'}</div>`;
-    }).join('');
-
     const segs = [...desigs].reverse().map((d,ri) => {
       const i = desigs.length-1-ri;
       const v = data[mk]?.[d]||0; if(!v) return '';
@@ -1647,7 +1641,6 @@ function desigMonthChart(id, months, data, desigs) {
       <div style="font-size:9px;color:var(--sub);font-family:var(--mono);font-weight:600;margin-bottom:2px">${total||''}</div>
       <div style="width:26px;height:${BAR_H}px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:2px 2px 0 0;overflow:hidden">${segs}</div>
       <div style="font-size:9px;color:var(--mut);font-family:var(--mono);writing-mode:vertical-lr;transform:rotate(180deg);height:34px;margin-top:3px">${fmk(mk)}</div>
-      <div style="margin-top:4px;display:flex;flex-direction:column;align-items:center">${counts}</div>
     </div>`;
   }).join('');
 
