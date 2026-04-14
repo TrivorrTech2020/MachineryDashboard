@@ -662,6 +662,7 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
         </tr></thead><tbody id="inv-tbody"></tbody></table></div>
       </div>
       <div class="inv-note">
+        Only <b>Replace (R)</b> and <b>Grease (G)</b> items are shown — Check, Tighten, and Adjust tasks are excluded (no stock needed).
         Stock levels assume a 2-week lead time &amp; 95% service level (Z = 1.65).
         Min stock = safety stock (1.65 × σ × √0.5 months).
         Reorder point = demand in lead time + safety stock.
@@ -1095,10 +1096,11 @@ function processData() {
     const jcn = toN(r['Job Card Number']); if(!jcn) return;
     if(!lbIdx[jcn]) lbIdx[jcn] = [];
     lbIdx[jcn].push({
-      date : pDate(r['Date']),
-      svc  : r['Service Type']||'',
-      desc : (r['Work/Spare Part Description']||'').trim(),
-      amt  : toN(r['Amount'])
+      date  : pDate(r['Date']),
+      svc   : r['Service Type']||'',
+      desc  : (r['Work/Spare Part Description']||'').trim(),
+      amt   : toN(r['Amount']),
+      action: parseAction(r['Work/Spare Part Description']||'')
     });
   });
   D.lbIdx = lbIdx;
@@ -1156,13 +1158,22 @@ const INV_SKIP = /^(labour|workshop|work\s+done|service\s+only|nil|n\/a|none|ove
 
 function normInvPart(s) {
   s = s.toLowerCase().trim();
-  // Strip common action prefixes
-  s = s.replace(/^(replaced?d?|fitted?|installed?|renewed?|changed?|r\s*-\s*|c\s*-\s*|r\/|c\/|new\s+)\s*/i, '');
+  // Strip structured action prefix (R-, C-, T-, G-, A-)
+  s = s.replace(/^[RCTGA]\s*[-\/]\s*/i, '');
+  // Strip common action word prefixes
+  s = s.replace(/^(replaced?d?|fitted?|installed?|renewed?|changed?|new\s+)\s*/i, '');
   // Strip leading quantity (e.g. "2x ", "3 nos ", "qty 2 ")
   s = s.replace(/^\d+\.?\d*\s*(x|nos?\.?|pcs?\.?|sets?\.?|units?\.?)?\s+/i, '');
   s = s.trim();
   return s;
 }
+
+function parseAction(s) {
+  const m = (s || '').trim().match(/^([RCTGA])\s*[-\/]\s*/i);
+  return m ? m[1].toUpperCase() : null;
+}
+const ACTION_LABELS = { R:'Replace', C:'Check', T:'Tighten', G:'Grease', A:'Adjust' };
+const ACTION_STOCK  = new Set(['R','G']); // only these need physical stock
 
 function buildInventorySkus() {
   const skuMap = {};
@@ -1187,6 +1198,9 @@ function buildInventorySkus() {
     // Split comma/semicolon-separated multi-part entries
     const pieces = rawDesc.split(/[,;]+/);
     pieces.forEach(piece => {
+      const actionCode = parseAction(piece);
+      // Skip non-stock action types (Check, Tighten, Adjust)
+      if (actionCode && !ACTION_STOCK.has(actionCode)) return;
       const part = normInvPart(piece);
       if (!part || part.length < 3) return;
       if (INV_SKIP.test(part)) return;
@@ -1195,7 +1209,7 @@ function buildInventorySkus() {
 
       const key = part + '||' + (model || vno);
       if (!skuMap[key]) {
-        skuMap[key] = { part, model, vmeType, category: ss.category || '', dates: [], amounts: {}, monthCounts: {} };
+        skuMap[key] = { part, model, vmeType, category: ss.category || '', actionCode: actionCode || 'R', dates: [], amounts: {}, monthCounts: {} };
       }
       skuMap[key].dates.push(date);
       const ym = date.getFullYear() * 100 + (date.getMonth() + 1);
@@ -1241,7 +1255,7 @@ function buildInventorySkus() {
     const avgCost = allAmts.length ? allAmts.reduce((a, b) => a + b, 0) / allAmts.length : null;
     const annualValue = avgCost ? monthlyRate * 12 * avgCost : monthlyRate * 12 * 100; // fallback rank by freq
 
-    return { part: s.part, model: s.model, vmeType: s.vmeType, category: s.category, uses: totalUses, monthlyRate, stddev, safetyStock, minStock, reorderPoint, maxStock, avgCost, annualValue, priority: '' };
+    return { part: s.part, model: s.model, vmeType: s.vmeType, category: s.category, actionCode: s.actionCode, uses: totalUses, monthlyRate, stddev, safetyStock, minStock, reorderPoint, maxStock, avgCost, annualValue, priority: '' };
   }).filter(Boolean);
 
   // ABC analysis: sort by annual value descending, assign A/B/C
@@ -1873,9 +1887,13 @@ function openJC(jcn) {
     ? lines.map(l => {
         const amt = l.amt && l.amt > 0 ? fmt(l.amt) : '—';
         const ld = l.date ? l.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+        const ac = l.action;
+        const acBadge = ac
+          ? `<span class="b ${ac==='R'?'br2':ac==='G'?'bbl':ac==='C'?'bgr':'bam'}">${ACTION_LABELS[ac]||ac}</span>`
+          : `<span style="color:var(--mut);font-size:11px">${l.svc||'—'}</span>`;
         return `<tr>
           <td style="font-size:11px;color:var(--sub)">${ld}</td>
-          <td style="font-size:11px;color:var(--sub)">${l.svc||'—'}</td>
+          <td>${acBadge}</td>
           <td style="font-size:12px">${l.desc||'—'}</td>
           <td class="n" style="font-family:var(--mono);font-size:11px">${amt}</td>
         </tr>`;
@@ -1885,7 +1903,7 @@ function openJC(jcn) {
   $('drw-body').innerHTML = `
     <div class="drw-sec">Logbook entries (${lines.length})</div>
     <div class="tw" style="margin:0"><table><thead><tr>
-      <th>Date</th><th>Service type</th><th>Description / Part</th><th style="text-align:right">Amount</th>
+      <th>Date</th><th>Action</th><th>Description / Part</th><th style="text-align:right">Amount</th>
     </tr></thead><tbody>${lineRows}</tbody></table></div>
   `;
 
@@ -1948,13 +1966,17 @@ function rInventory() {
 
   $('inv-tbody').innerHTML = rows.slice(0, 250).map(s => {
     const priCls = s.priority === 'A' ? 'br2' : s.priority === 'B' ? 'bam' : 'bgr';
-    const rateStr = s.monthlyRate < 0.05 ? '<0.1' : s.monthlyRate < 1 ? s.monthlyRate.toFixed(1) : s.monthlyRate.toFixed(1);
-    // Highlight min stock in amber if it's >= 3 (needs active management)
+    const rateStr = s.monthlyRate < 0.05 ? '<0.1' : s.monthlyRate.toFixed(1);
     const minStyle = s.minStock >= 3 ? 'color:var(--amb);font-weight:600' : 'color:var(--sub)';
     const reorderStyle = s.reorderPoint >= 5 ? 'color:var(--acc);font-weight:600' : 'color:var(--sub)';
     const partDisplay = s.part.length > 36 ? s.part.slice(0, 35) + '…' : s.part;
+    const acCls = s.actionCode === 'G' ? 'bbl' : 'br2';
+    const acLabel = ACTION_LABELS[s.actionCode] || s.actionCode || 'R';
     return `<tr>
-      <td style="text-transform:capitalize;max-width:220px" title="${s.part}">${partDisplay}</td>
+      <td style="text-transform:capitalize;max-width:220px" title="${s.part}">
+        ${partDisplay}
+        <span class="b ${acCls}" style="margin-left:5px;font-size:9px;opacity:.75">${acLabel}</span>
+      </td>
       <td style="color:var(--sub)">${s.model || '—'}</td>
       <td style="color:var(--mut);font-size:11px">${s.vmeType || '—'}</td>
       <td class="n">${s.uses}</td>
