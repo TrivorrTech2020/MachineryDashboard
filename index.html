@@ -1492,7 +1492,7 @@ function applyFilters() {
   const um = [...new Set(f.map(r=>r.vno).filter(Boolean))].length;
   $('ps').textContent = f.length.toLocaleString()+' repair events · '+um+' machines';
   $('fstats').textContent = f.length.toLocaleString()+' events matching filters';
-  rOverview(f); rMachines(f); rDowntime(f); rCosts(f); rAlerts(f); rRetain(f); rJobCards(f); rInventory();
+  rOverview(f); rMachines(f); rDowntime(f); rCosts(f); rAlerts(f); rRetain(f); rJobCards(f); rInventory(); rService();
 }
 
 // ══ CHART HELPERS ══
