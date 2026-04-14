@@ -1701,16 +1701,22 @@ function rOverview(f) {
   // Heat
   renderHeatmap(f);
 
-  // Designation monthly utilization — logbook row level, all job types
+  // Designation monthly utilization — one count per JCN per designation (not per row)
   const jcnSet = new Set(f.map(r => r.jcn));
-  const dMonths = {}, dDesigs = new Set();
+  // Step 1: collect unique designations per JCN (and the JCN's date)
+  const jcnDesigMap = {};
   RAW.db.forEach(r => {
     const jcn = toN(r['Job Card Number']); if(!jcn || !jcnSet.has(jcn)) return;
     const raw = (r['Designation']||'').trim(); if(!raw) return;
     const date = pDate(r['Date']); if(!date) return;
+    if(!jcnDesigMap[jcn]) jcnDesigMap[jcn] = { date, desigs: new Set() };
+    raw.split(',').forEach(d => { const dt = d.trim(); if(dt) jcnDesigMap[jcn].desigs.add(dt); });
+  });
+  // Step 2: aggregate by month — each JCN counts once per designation it involved
+  const dMonths = {}, dDesigs = new Set();
+  Object.values(jcnDesigMap).forEach(({ date, desigs }) => {
     const mk = date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');
-    raw.split(',').forEach(d => {
-      const dt = d.trim(); if(!dt) return;
+    desigs.forEach(dt => {
       dDesigs.add(dt);
       if(!dMonths[mk]) dMonths[mk] = {};
       dMonths[mk][dt] = (dMonths[mk][dt]||0)+1;
