@@ -1195,7 +1195,7 @@ function buildInventorySkus() {
 
       const key = part + '||' + (model || vno);
       if (!skuMap[key]) {
-        skuMap[key] = { part, model, vmeType, dates: [], amounts: {}, monthCounts: {} };
+        skuMap[key] = { part, model, vmeType, category: ss.category || '', dates: [], amounts: {}, monthCounts: {} };
       }
       skuMap[key].dates.push(date);
       const ym = date.getFullYear() * 100 + (date.getMonth() + 1);
@@ -1241,7 +1241,7 @@ function buildInventorySkus() {
     const avgCost = allAmts.length ? allAmts.reduce((a, b) => a + b, 0) / allAmts.length : null;
     const annualValue = avgCost ? monthlyRate * 12 * avgCost : monthlyRate * 12 * 100; // fallback rank by freq
 
-    return { part: s.part, model: s.model, vmeType: s.vmeType, uses: totalUses, monthlyRate, stddev, safetyStock, minStock, reorderPoint, maxStock, avgCost, annualValue, priority: '' };
+    return { part: s.part, model: s.model, vmeType: s.vmeType, category: s.category, uses: totalUses, monthlyRate, stddev, safetyStock, minStock, reorderPoint, maxStock, avgCost, annualValue, priority: '' };
   }).filter(Boolean);
 
   // ABC analysis: sort by annual value descending, assign A/B/C
@@ -1345,7 +1345,7 @@ function applyFilters() {
   const um = [...new Set(f.map(r=>r.vno).filter(Boolean))].length;
   $('ps').textContent = f.length.toLocaleString()+' repair events · '+um+' machines';
   $('fstats').textContent = f.length.toLocaleString()+' events matching filters';
-  rOverview(f); rMachines(f); rDowntime(f); rCosts(f); rAlerts(f); rRetain(f); rJobCards(f);
+  rOverview(f); rMachines(f); rDowntime(f); rCosts(f); rAlerts(f); rRetain(f); rJobCards(f); rInventory();
 }
 
 // ══ CHART HELPERS ══
@@ -1915,9 +1915,14 @@ function rInventory() {
     }
   }
 
-  // Apply local filters
-  const q = (_invSearch || '').toLowerCase().trim();
+  // Apply global filter bar state (category, VME type, model)
   let rows = skus;
+  if (!ddIsAll('dd-cat'))   rows = rows.filter(s => DD_STATE['dd-cat'].includes(s.category));
+  if (!ddIsAll('dd-vme'))   rows = rows.filter(s => DD_STATE['dd-vme'].includes(s.vmeType));
+  if (!ddIsAll('dd-model')) rows = rows.filter(s => DD_STATE['dd-model'].includes(s.model));
+
+  // Apply local inventory filters
+  const q = (_invSearch || '').toLowerCase().trim();
   if (_invVme !== 'all') rows = rows.filter(s => s.vmeType === _invVme);
   if (_invPri !== 'all') rows = rows.filter(s => s.priority === _invPri);
   if (q) rows = rows.filter(s =>
