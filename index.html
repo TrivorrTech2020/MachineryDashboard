@@ -394,6 +394,16 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
           </div>
         </div>
         <div class="fg">
+          <label>Area</label>
+          <div class="sdd" id="dd-area">
+            <div class="sdd-trigger" onclick="toggleDD('dd-area')">
+              <span class="sdd-val">All areas</span>
+              <svg class="sdd-chevron" width="10" height="10" fill="none" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="sdd-panel"><input class="sdd-search" placeholder="Search…" oninput="filterDD('dd-area',this.value)"><div class="sdd-list" id="dd-area-list"></div></div>
+          </div>
+        </div>
+        <div class="fg">
           <label>Location</label>
           <div class="sdd" id="dd-loc">
             <div class="sdd-trigger" onclick="toggleDD('dd-loc')">
@@ -795,9 +805,35 @@ let _jcRows = [];
 let showScrapSold = false;
 // Date range state
 let dateFrom = null, dateTo = null, activeQuick = 'all';
+const LOC_AREA = {
+  'Akhnoor':'Jammu','Anantnag':'Srinagar','Arnas':'Jammu','Arunachal':'Arunachal',
+  'Bakshi Nagar':'Jammu','Bani':'Jammu','Bani Crusher':'Jammu','Bari Brahamana':'Jammu',
+  'Bhagwati Nagar':'Jammu','Billawar':'Jammu','Birpur':'Jammu','Bus Stand':'Jammu',
+  'Chalunka':'Leh','Channi':'Jammu','Chenani':'Jammu','Diskit':'Leh','Dubigali':'Jammu',
+  'Dumail':'Jammu','Durga Bridge':'Leh','Factory':'Jammu','Factory (Tikkri)':'Jammu',
+  'Hanswar':'Jammu','Haridwar, Uttarakhand':'Uttarakhand','Hemiya':'Leh',
+  'Hunder Gali':'Jammu','Jaipur':'Jammu','Jhajjar Kotli':'Jammu','Kanachak':'Jammu',
+  'Kangra,Himachal':'Himachal','Kargil':'Leh','Kathua':'Jammu','Kharpothang':'Leh',
+  'Khistwar':'Jammu','Khourgali':'Jammu','Kiru, Kishtwar':'Jammu','Kishtwar':'Jammu',
+  'Kot Bhalwal':'Jammu','Kunjwani':'Jammu','Kwar Kishwar':'Jammu','Lambari':'Jammu',
+  'Latti':'Jammu','Leh':'Leh','Leyland':'Jammu','Loma':'Leh','Ludhiana':'Ludhiana',
+  'Mahindra Workshop Jmu':'Jammu','Mahore':'Jammu','Makhan':'Jammu','Malik Market':'Jammu',
+  'Mari Dhakikote':'Jammu','Maricet':'Jammu','Markha':'Leh','Marsoo, Doda':'Jammu',
+  'Marwah':'Jammu','Mendhar':'Jammu','Mithalgarh':'Jammu','Moradabad':'Moradabad',
+  'Nagrota':'Jammu','Naigarh':'Jammu','Narwal':'Jammu','Nashri':'Jammu','Nirpur':'Jammu',
+  'Nonial':'Jammu','Nowshera':'Jammu','Nubra':'Leh','Nyoma':'Leh','Op Baba':'Leh',
+  'Pagal Nala':'Leh','Pallawalla':'Jammu','Pathankot':'Jammu','Phyang':'Leh',
+  'Rajouri':'Jammu','Raju Suri':'Jammu','Ramban':'Jammu','Rimkim':'Uttarakhand',
+  'Ritti':'Jammu','Sainik Colony':'Jammu','Sarore':'Jammu','Sawlakote':'Jammu',
+  'Sawlakotee':'Jammu','Shastri Nagar':'Jammu','Srinagar':'Srinagar',
+  'Sungri, Mahore':'Jammu','T R Enterprises':'Jammu','Takki Kot':'Jammu',
+  'Tapovan':'Uttarakhand','Udhampur':'Jammu','Uttarakhand':'Uttarakhand',
+  'Workshop Jammu':'Jammu','Zanskar':'Leh'
+};
+
 // Searchable dropdown state (each value is an array; ['all'] means no filter)
 const DD_OPTS  = {};
-const DD_STATE = { 'dd-cat':['all'], 'dd-vme':['all'], 'dd-model':['all'], 'dd-loc':['all'] };
+const DD_STATE = { 'dd-cat':['all'], 'dd-vme':['all'], 'dd-model':['all'], 'dd-loc':['all'], 'dd-area':['all'] };
 function ddIsAll(id) { const s=DD_STATE[id]||['all']; return s.length===0||s[0]==='all'; }
 function ddLabel(id) {
   if(ddIsAll(id)) return (DD_OPTS[id]||[{label:'All'}])[0].label;
@@ -1199,6 +1235,7 @@ function processData() {
       vmeType   : ss.vmeType   || '',
       model     : ss.model     || '',
       loc       : jc.loc       || '',
+      area      : LOC_AREA[jc.loc] || '',
       status    : jc.status    || '',
       sup       : jc.sup       || '',
       vmeno     : jc.vmeno     || '',
@@ -1442,6 +1479,8 @@ function buildFilters() {
   populateDD('dd-model', [{value:'all',label:'All models'},...models.map(m=>({value:m,label:m}))]);
   const locs = [...new Set(D.repairs.map(r=>r.loc).filter(Boolean))].sort();
   populateDD('dd-loc', [{value:'all',label:'All locations'},...locs.map(l=>({value:l,label:l}))]);
+  const areas = [...new Set(Object.values(LOC_AREA))].sort();
+  populateDD('dd-area', [{value:'all',label:'All areas'},...areas.map(a=>({value:a,label:a}))]);
 }
 
 // ══ DATE QUICK SELECT ══
@@ -1485,7 +1524,7 @@ function onDateChange() {
 function onFilterChange() { applyFilters(); }
 
 function resetFilters() {
-  ['dd-cat','dd-vme','dd-model','dd-loc'].forEach(id => {
+  ['dd-cat','dd-vme','dd-model','dd-loc','dd-area'].forEach(id => {
     DD_STATE[id] = ['all'];
     const vEl = $(id) && $(id).querySelector('.sdd-val');
     if (vEl && DD_OPTS[id]) vEl.textContent = DD_OPTS[id][0].label;
@@ -1507,7 +1546,8 @@ function getFiltered() {
     if(!ddIsAll('dd-cat') && !DD_STATE['dd-cat'].includes(r.category))  return false;
     if(!ddIsAll('dd-vme') && !DD_STATE['dd-vme'].includes(r.vmeType))   return false;
     if(!ddIsAll('dd-model') && !DD_STATE['dd-model'].includes(r.model)) return false;
-    if(!ddIsAll('dd-loc') && !DD_STATE['dd-loc'].includes(r.loc))       return false;
+    if(!ddIsAll('dd-loc')  && !DD_STATE['dd-loc'].includes(r.loc))       return false;
+    if(!ddIsAll('dd-area') && !DD_STATE['dd-area'].includes(r.area))    return false;
     if(dateFrom && r.date && r.date < dateFrom) return false;
     if(dateTo   && r.date && r.date > dateTo)   return false;
     return true;
@@ -1637,13 +1677,13 @@ function rOverview(f) {
   const mtbf=gaps.length?gaps.reduce((s,g)=>s+g.g,0)/gaps.length:0;
   const qrPct=gaps.length?Math.round(gaps.filter(g=>g.g<=7).length/gaps.length*100):0;
 
-  const _anyActive = !ddIsAll('dd-vme')||!ddIsAll('dd-cat')||!ddIsAll('dd-model')||!ddIsAll('dd-loc');
+  const _anyActive = !ddIsAll('dd-vme')||!ddIsAll('dd-cat')||!ddIsAll('dd-model')||!ddIsAll('dd-loc')||!ddIsAll('dd-area');
 
   $('o1').textContent=f.length.toLocaleString();
   $('o2').textContent=openAll.length;
   if(_anyActive){
     const openFiltered=f.filter(r=>(r.status||'').toLowerCase()==='open').length;
-    const allSel=[...DD_STATE['dd-cat'],...DD_STATE['dd-vme'],...DD_STATE['dd-model'],...DD_STATE['dd-loc']].filter(v=>v!=='all');
+    const allSel=[...DD_STATE['dd-cat'],...DD_STATE['dd-vme'],...DD_STATE['dd-model'],...DD_STATE['dd-loc'],...DD_STATE['dd-area']].filter(v=>v!=='all');
     const lbl=allSel.length===1?allSel[0]:'filters';
     $('o2s').textContent='of which '+openFiltered+' are '+lbl;
   } else {
@@ -2043,10 +2083,11 @@ function rJobCards(f) {
     };
   }).filter(Boolean)
     .filter(r => {
-      if(!ddIsAll('dd-cat')   && !DD_STATE['dd-cat'].includes(r.category))  return false;
-      if(!ddIsAll('dd-vme')   && !DD_STATE['dd-vme'].includes(r.vmeType))   return false;
-      if(!ddIsAll('dd-model') && !DD_STATE['dd-model'].includes(r.model))   return false;
-      if(!ddIsAll('dd-loc')   && !DD_STATE['dd-loc'].includes(r.loc))       return false;
+      if(!ddIsAll('dd-cat')   && !DD_STATE['dd-cat'].includes(r.category))        return false;
+      if(!ddIsAll('dd-vme')   && !DD_STATE['dd-vme'].includes(r.vmeType))         return false;
+      if(!ddIsAll('dd-model') && !DD_STATE['dd-model'].includes(r.model))         return false;
+      if(!ddIsAll('dd-loc')   && !DD_STATE['dd-loc'].includes(r.loc))             return false;
+      if(!ddIsAll('dd-area')  && !DD_STATE['dd-area'].includes(LOC_AREA[r.loc]||'')) return false;
       if(dateFrom && r.date && r.date < dateFrom) return false;
       if(dateTo   && r.date && r.date > dateTo)   return false;
       return true;
