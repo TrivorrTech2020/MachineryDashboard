@@ -503,6 +503,11 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
         </div>
         <div class="hm" id="ohm"></div><div class="hg" id="oheat"></div>
       </div>
+      <div class="gf card">
+        <div class="ct">Monthly manpower utilization</div>
+        <div class="cs">Logbook entries by designation · repairs &amp; services combined</div>
+        <div id="odesig"></div>
+      </div>
     </div>
 
     <!-- ══ MACHINES ══ -->
@@ -1553,6 +1558,44 @@ function barChart(id, data, color, fv) {
   </div>`).join('');
 }
 
+function desigMonthChart(id, months, data, desigs) {
+  const el = $(id); if(!el) return;
+  if(!months.length) { el.innerHTML='<div style="color:var(--mut);font-size:12px;padding:8px 0">No designation data recorded.</div>'; return; }
+  const COLORS = {'Mech':'#3b82f6','Motor Elec':'#f59e0b','Machinery Elec':'#10b981'};
+  const palette = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4'];
+  const colOf = (d,i) => COLORS[d] || palette[i % palette.length];
+  const mths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const fmk = mk => { const [y,m] = mk.split('-'); return mths[+m-1]+"'"+y.slice(2); };
+
+  const totals = months.map(mk => desigs.reduce((s,d) => s+(data[mk]?.[d]||0), 0));
+  const mx = Math.max(...totals, 1);
+  const BAR_H = 90;
+
+  const legend = desigs.map((d,i) =>
+    `<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--sub)">
+      <div style="width:10px;height:10px;border-radius:2px;background:${colOf(d,i)};flex-shrink:0"></div>${d}
+    </div>`).join('');
+
+  const bars = months.map(mk => {
+    const segs = [...desigs].reverse().map((d,ri) => {
+      const i = desigs.length-1-ri;
+      const v = data[mk]?.[d]||0; if(!v) return '';
+      const h = Math.max(2, Math.round(v/mx*BAR_H));
+      return `<div style="height:${h}px;background:${colOf(d,i)};width:100%" title="${d}: ${v}"></div>`;
+    }).join('');
+    const total = totals[months.indexOf(mk)];
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:0;flex:0 0 auto;min-width:34px">
+      <div style="font-size:9px;color:var(--mut);font-family:var(--mono);margin-bottom:2px">${total||''}</div>
+      <div style="width:20px;height:${BAR_H}px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:2px 2px 0 0;overflow:hidden">${segs}</div>
+      <div style="font-size:9px;color:var(--mut);font-family:var(--mono);writing-mode:vertical-lr;transform:rotate(180deg);height:34px;margin-top:3px">${fmk(mk)}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">${legend}</div>
+    <div style="display:flex;gap:6px;align-items:flex-end;overflow-x:auto;padding-bottom:4px">${bars}</div>`;
+}
+
 function trendSVG(id, pts, color) {
   const svg=$(id); if(!svg||!pts.length) return;
   const W=700,H=110,px=50,bot=22,top=14;
@@ -1657,6 +1700,25 @@ function rOverview(f) {
 
   // Heat
   renderHeatmap(f);
+
+  // Designation monthly utilization — logbook row level, all job types
+  const jcnSet = new Set(f.map(r => r.jcn));
+  const dMonths = {}, dDesigs = new Set();
+  RAW.db.forEach(r => {
+    const jcn = toN(r['Job Card Number']); if(!jcn || !jcnSet.has(jcn)) return;
+    const raw = (r['Designation']||'').trim(); if(!raw) return;
+    const date = pDate(r['Date']); if(!date) return;
+    const mk = date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');
+    raw.split(',').forEach(d => {
+      const dt = d.trim(); if(!dt) return;
+      dDesigs.add(dt);
+      if(!dMonths[mk]) dMonths[mk] = {};
+      dMonths[mk][dt] = (dMonths[mk][dt]||0)+1;
+    });
+  });
+  const KNOWN_DESIGS = ['Mech','Motor Elec','Machinery Elec'];
+  const allDesigs = [...new Set([...KNOWN_DESIGS,...dDesigs])].filter(d => dDesigs.has(d));
+  desigMonthChart('odesig', Object.keys(dMonths).sort(), dMonths, allDesigs);
 }
 
 // ══ MACHINES ══
