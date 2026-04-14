@@ -723,6 +723,7 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
         <button class="qb"     id="sv-s-overdue"  onclick="setSvcStatus('overdue')" style="border-color:rgba(239,68,68,.3);color:#b91c1c">Overdue</button>
         <button class="qb"     id="sv-s-due-soon" onclick="setSvcStatus('due-soon')" style="border-color:rgba(245,158,11,.3);color:#b45309">Due soon</button>
         <button class="qb"     id="sv-s-ok"       onclick="setSvcStatus('ok')"      style="border-color:rgba(16,185,129,.3);color:#047857">OK</button>
+        <button class="qb"     id="sv-s-no-data"  onclick="setSvcStatus('no-data')" style="border-color:rgba(100,116,139,.3);color:var(--mut)">No data</button>
         <span class="jc-count" id="sv-count"></span>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
@@ -2262,7 +2263,7 @@ function svcSearch(q) { _svcSearch = q; rService(); }
 
 function setSvcStatus(s) {
   _svcStatus = s;
-  ['all','overdue','due-soon','ok'].forEach(v => $('sv-s-'+v)?.classList.toggle('on', v === s));
+  ['all','overdue','due-soon','ok','no-data'].forEach(v => $('sv-s-'+v)?.classList.toggle('on', v === s));
   rService();
 }
 
