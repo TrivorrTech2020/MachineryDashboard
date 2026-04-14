@@ -724,7 +724,7 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
         <button class="qb"     id="sv-s-due-soon" onclick="setSvcStatus('due-soon')" style="border-color:rgba(245,158,11,.3);color:#b45309">Due soon</button>
         <button class="qb"     id="sv-s-ok"       onclick="setSvcStatus('ok')"      style="border-color:rgba(16,185,129,.3);color:#047857">OK</button>
         <button class="qb"     id="sv-s-no-data"  onclick="setSvcStatus('no-data')" style="border-color:rgba(100,116,139,.3);color:var(--mut)">No data</button>
-        <button class="qb"     id="sv-s-stale"    onclick="setSvcStatus('stale')"   style="border-color:rgba(139,92,246,.3);color:#7c3aed">Stale &gt;15d</button>
+        <button class="qb"     id="sv-s-stale"    onclick="setSvcStatus('stale')"   style="border-color:rgba(139,92,246,.3);color:#7c3aed">Stale &gt;30d</button>
         <span class="jc-count" id="sv-count"></span>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
@@ -2209,7 +2209,7 @@ function rService() {
   const q = (_svcSearch || '').toLowerCase().trim();
   let rows = all;
   if(_svcStatus === 'stale') {
-    const cutoff = new Date(Date.now() - 15 * 86400000);
+    const cutoff = new Date(Date.now() - 30 * 86400000);
     rows = rows.filter(s => !s.curDate || s.curDate < cutoff);
   } else if(_svcStatus !== 'all') {
     rows = rows.filter(s => s.status === _svcStatus);
