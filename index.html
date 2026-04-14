@@ -488,7 +488,17 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
         <div class="card"><div class="ct">By model</div><div class="cs">Top 8 by repair count</div><div id="omodel"></div></div>
         <div class="card"><div class="ct">By location</div><div class="cs">From job card register</div><div id="oloc"></div></div>
       </div>
-      <div class="gf card"><div class="ct">Monthly repair volume</div><div class="cs">Number of repairs per calendar month</div><div class="hm" id="ohm"></div><div class="hg" id="oheat"></div></div>
+      <div class="gf card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+          <div><div class="ct" style="margin-bottom:2px">Monthly volume</div><div class="cs" style="margin-bottom:0">Events per calendar month</div></div>
+          <div style="display:flex;gap:4px">
+            <button class="qb on" id="hm-both"   onclick="setHeatMode('both')"   >Both</button>
+            <button class="qb"    id="hm-repair" onclick="setHeatMode('repair')" >Repairs</button>
+            <button class="qb"    id="hm-service" onclick="setHeatMode('service')">Service</button>
+          </div>
+        </div>
+        <div class="hm" id="ohm"></div><div class="hg" id="oheat"></div>
+      </div>
     </div>
 
     <!-- ══ MACHINES ══ -->
@@ -1363,6 +1373,31 @@ function applyFilters() {
 }
 
 // ══ CHART HELPERS ══
+let _heatData = [];   // cache last full dataset for toggle re-renders
+
+function renderHeatmap(f) {
+  _heatData = f;
+  const mths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const src = _heatMode === 'repair'  ? f.filter(r => r.svc === 'Running Repair')
+            : _heatMode === 'service' ? f.filter(r => r.svc === 'Service' || r.svc === 'SERVICE')
+            : f;
+  const color = _heatMode === 'service' ? '16,185,129' : _heatMode === 'repair' ? '239,68,68' : '59,130,246';
+  const mc = Array(12).fill(0);
+  src.forEach(r => { if(r.month) mc[r.month-1]++; });
+  const mmax = Math.max(...mc, 1);
+  $('ohm').innerHTML = mths.map(m => `<div class="hmn">${m}</div>`).join('');
+  $('oheat').innerHTML = mc.map((v,i) => {
+    const op = 0.1 + 0.9*(v/mmax);
+    return `<div class="hc" style="background:rgba(${color},${op.toFixed(2)});color:${op>0.55?'#ffffff':'#64748b'}" title="${mths[i]}: ${v}">${v||''}</div>`;
+  }).join('');
+}
+
+function setHeatMode(mode) {
+  _heatMode = mode;
+  ['both','repair','service'].forEach(m => $('hm-'+m)?.classList.toggle('on', m === mode));
+  if(_heatData.length) renderHeatmap(_heatData);
+}
+
 function barChart(id, data, color, fv) {
   const c=$(id); if(!c) return;
   const mx = Math.max(...data.map(d=>d.v), 1);
@@ -1476,11 +1511,7 @@ function rOverview(f) {
   barChart('oloc',Object.entries(lc).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([l,v])=>({l,v})),'#f59e0b');
 
   // Heat
-  const mths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const mc=Array(12).fill(0);f.forEach(r=>{if(r.month)mc[r.month-1]++;});
-  const mmax=Math.max(...mc,1);
-  $('ohm').innerHTML=mths.map(m=>`<div class="hmn">${m}</div>`).join('');
-  $('oheat').innerHTML=mc.map((v,i)=>{const op=0.1+0.9*(v/mmax);return`<div class="hc" style="background:rgba(59,130,246,${op.toFixed(2)});color:${op>0.55?'#ffffff':'#64748b'}" title="${mths[i]}: ${v}">${v||''}</div>`;}).join('');
+  renderHeatmap(f);
 }
 
 // ══ MACHINES ══
@@ -1748,6 +1779,9 @@ function rRetain(f) {
     <td><span class="b ${m.rec[0]}">${m.rec[1]}</span></td>
   </tr>`).join('');
 }
+
+// ══ HEATMAP STATE ══
+let _heatMode = 'both';
 
 // ══ INVENTORY STATE ══
 let _invSearch = '';
