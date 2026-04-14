@@ -739,7 +739,7 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
       </div>
       <div class="inv-note">
         Current reading is taken from the Current Reading (VME) sheet or the logbook — whichever has the more recent entry.
-        Last service is the most recent logbook entry with Service Type = Service that includes a Meter Reading.
+        Last service is the most recent logbook entry whose description consists entirely of action-coded items (R-/C-/T-/G-/A-) — the standard service checklist format.
         Due soon = within 10% of the service interval remaining.
       </div>
     </div>
@@ -1231,6 +1231,15 @@ function parseAction(s) {
 const ACTION_LABELS = { R:'Replace', C:'Check', T:'Tighten', G:'Grease', A:'Adjust' };
 const ACTION_STOCK  = new Set(['R','G']); // only these need physical stock
 
+// Returns true if every comma-separated piece of the description has an action-code prefix
+// (R-xxx, C-xxx, T-xxx, G-xxx, A-xxx). These rows are service/maintenance checklists.
+function isServiceRow(desc) {
+  if (!desc) return false;
+  const pieces = desc.split(',').map(s => s.trim()).filter(Boolean);
+  if (!pieces.length) return false;
+  return pieces.every(p => /^[RCTGA]\s*[-\/]/i.test(p));
+}
+
 function buildInventorySkus() {
   const skuMap = {};
   const today = new Date();
@@ -1358,12 +1367,13 @@ function buildServiceSchedule() {
       latestJcnMap[vno] = { jcn, date };
   });
 
-  // Last SERVICE entry per VME from logbook (with meter reading)
+  // Last SERVICE entry per VME from logbook — identified by all description items
+  // having action-code prefixes (R-/C-/T-/G-/A-), not by Service Type column
   const lastSvcMap = {};
   RAW.db.forEach(r => {
-    const vno = (r['Veh/Mach/Equip No']||'').trim(); if(!vno) return;
-    const svc = (r['Service Type']||'').trim();
-    if(svc !== 'Service' && svc.toUpperCase() !== 'SERVICE') return;
+    const vno  = (r['Veh/Mach/Equip No']||'').trim(); if(!vno) return;
+    const desc = (r['Work/Spare Part Description']||'').trim();
+    if(!isServiceRow(desc)) return;
     const val  = toN(r['Meter Reading']);
     const date = pDate(r['Date']); if(!date) return;
     if(!lastSvcMap[vno] || date > lastSvcMap[vno].date)
