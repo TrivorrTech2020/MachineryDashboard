@@ -260,6 +260,17 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
   .sdd,.drng,.fdate{min-width:0;width:100%}
   .drng-panel{min-width:0;width:calc(100vw - 32px)}
 }
+
+/* ── INVENTORY PAGE ── */
+.inv-sel{background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);padding:0 8px;font-size:12px;color:var(--txt);font-family:var(--sans);outline:none;height:32px;cursor:pointer;transition:border-color .15s;min-width:140px}
+.inv-sel:focus,.inv-sel:hover{border-color:var(--acc)}
+.inv-note{font-size:10px;color:var(--mut);font-family:var(--mono);padding:10px 0 2px;line-height:1.7}
+.inv-pri-a{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#b91c1c}
+.inv-pri-a.on,.inv-pri-a:hover{background:rgba(239,68,68,.18);border-color:#dc2626;color:#b91c1c}
+.inv-pri-b{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#b45309}
+.inv-pri-b.on,.inv-pri-b:hover{background:rgba(245,158,11,.18);border-color:#d97706;color:#b45309}
+.inv-pri-c{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:#047857}
+.inv-pri-c.on,.inv-pri-c:hover{background:rgba(16,185,129,.18);border-color:#059669;color:#047857}
 </style>
 </head>
 <body>
@@ -331,6 +342,10 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
       <button class="ni" onclick="showPage('jobcards',this)">
         <svg class="nic" fill="none" viewBox="0 0 16 16"><rect x="2" y="1.5" width="12" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/><line x1="5" y1="5" x2="11" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="5" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="5" y1="11" x2="8.5" y2="11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
         Job cards
+      </button>
+      <button class="ni" onclick="showPage('inventory',this)">
+        <svg class="nic" fill="none" viewBox="0 0 16 16"><rect x="1.5" y="6" width="13" height="8.5" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 9h13" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 6V4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><line x1="6" y1="12" x2="10" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Inventory
       </button>
     </nav>
     <div class="sfooter">
@@ -613,6 +628,48 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
       </div>
     </div>
 
+    <!-- ══ INVENTORY ══ -->
+    <div class="page" id="page-inventory">
+      <div class="kg c4">
+        <div class="kpi"><div class="kt" style="background:var(--acc)"></div><div class="kl">Tracked SKUs</div><div class="kv" id="inv-k1">—</div><div class="kd">part × model combinations</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--red)"></div><div class="kl">A-priority items</div><div class="kv" style="color:var(--red)" id="inv-k2">—</div><div class="kd">top 20% by usage value</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--amb)"></div><div class="kl">Fast movers</div><div class="kv" style="color:var(--amb)" id="inv-k3">—</div><div class="kd">used ≥ 1× per month</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--grn)"></div><div class="kl">Est. monthly spend</div><div class="kv" id="inv-k4">—</div><div class="kd">demand × avg unit cost</div></div>
+      </div>
+      <div class="jc-toolbar" style="margin-bottom:10px">
+        <input class="jc-search" id="inv-search" type="search" placeholder="Search part, model, VME type…" oninput="invSearch(this.value)">
+        <select class="inv-sel" id="inv-vme-sel" onchange="setInvVme(this.value)">
+          <option value="all">All VME types</option>
+        </select>
+        <button class="qb on" id="inv-pri-all" onclick="setInvPri('all')">All priority</button>
+        <button class="qb inv-pri-a" id="inv-pri-A" onclick="setInvPri('A')">A — High</button>
+        <button class="qb inv-pri-b" id="inv-pri-B" onclick="setInvPri('B')">B — Med</button>
+        <button class="qb inv-pri-c" id="inv-pri-C" onclick="setInvPri('C')">C — Low</button>
+        <span class="jc-count" id="inv-count"></span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="tw"><table><thead><tr>
+          <th>Part / description</th>
+          <th>Model</th>
+          <th>VME type</th>
+          <th style="text-align:right">Uses</th>
+          <th style="text-align:right">Avg/mo</th>
+          <th style="text-align:right" title="Safety stock — min quantity to hold at all times">Min stock</th>
+          <th style="text-align:right" title="Place a new order when stock reaches this level">Reorder at</th>
+          <th style="text-align:right" title="Order up to this level each replenishment">Max stock</th>
+          <th style="text-align:right">Avg unit cost</th>
+          <th title="ABC analysis: A = top 20% by annual value, B = next 30%, C = rest">Priority</th>
+        </tr></thead><tbody id="inv-tbody"></tbody></table></div>
+      </div>
+      <div class="inv-note">
+        Stock levels assume a 2-week lead time &amp; 95% service level (Z = 1.65).
+        Min stock = safety stock (1.65 × σ × √0.5 months).
+        Reorder point = demand in lead time + safety stock.
+        Max stock = 2 months demand + safety stock.
+        Priority A/B/C = top 20% / next 30% / remaining 50% by annual usage value (frequency × avg cost).
+      </div>
+    </div>
+
     <!-- ══ JOB CARDS ══ -->
     <div class="page" id="page-jobcards">
       <div class="jc-toolbar">
@@ -675,7 +732,7 @@ const VME_ID  = '1Vvzbh4oDFtbE2btO-rJaKR1fHzmJsv6fe9FKSqqnRBY';
 const VME_GID = '1293626573';     // VME master tab
 
 let RAW = { db:[], ss:[], jcs:[], vme:[] };
-let D   = { repairs:[], parts:[], ssMap:{}, vmeMap:{}, jcMap:{}, lbIdx:{}, scrapSold:new Set() };
+let D   = { repairs:[], parts:[], ssMap:{}, vmeMap:{}, jcMap:{}, lbIdx:{}, scrapSold:new Set(), inventorySkus:[] };
 let _jcRows = [];
 let showScrapSold = false;
 // Date range state
@@ -1090,6 +1147,111 @@ function processData() {
   const pf = {};
   D.repairs.forEach(r => r.parts.forEach(p => { pf[p]=(pf[p]||0)+1; }));
   D.parts = Object.entries(pf).sort((a,b)=>b[1]-a[1]).slice(0,20);
+
+  buildInventorySkus();
+}
+
+// ══ INVENTORY DATA ══
+const INV_SKIP = /^(labour|workshop|work\s+done|service\s+only|nil|n\/a|none|overhaul\s+(labour|charges?)?|transport|freight|delivery|mobiliz|general\s+repair|maintenance\s+only|pm\s+service|grease\s+all\s+points?|pm|lube\s+service)(\s|$)/i;
+
+function normInvPart(s) {
+  s = s.toLowerCase().trim();
+  // Strip common action prefixes
+  s = s.replace(/^(replaced?d?|fitted?|installed?|renewed?|changed?|r\s*-\s*|c\s*-\s*|r\/|c\/|new\s+)\s*/i, '');
+  // Strip leading quantity (e.g. "2x ", "3 nos ", "qty 2 ")
+  s = s.replace(/^\d+\.?\d*\s*(x|nos?\.?|pcs?\.?|sets?\.?|units?\.?)?\s+/i, '');
+  s = s.trim();
+  return s;
+}
+
+function buildInventorySkus() {
+  const skuMap = {};
+  const today = new Date();
+
+  RAW.db.forEach(r => {
+    const rawDesc = (r['Work/Spare Part Description'] || '').trim();
+    if (!rawDesc || rawDesc.length < 3) return;
+    if (rawDesc.toLowerCase() === 'work/spare part description') return;
+
+    const vno = (r['Veh/Mach/Equip No'] || '').trim();
+    // Exclude scrap/sold VMEs from inventory planning
+    if (D.scrapSold.has(vno)) return;
+
+    const ss = D.ssMap[vno] || {};
+    const model = ss.model || '';
+    const vmeType = ss.vmeType || '';
+    const date = pDate(r['Date']);
+    if (!date) return;   // skip entries without a valid date
+    const amt = toN(r['Amount']);
+
+    // Split comma/semicolon-separated multi-part entries
+    const pieces = rawDesc.split(/[,;]+/);
+    pieces.forEach(piece => {
+      const part = normInvPart(piece);
+      if (!part || part.length < 3) return;
+      if (INV_SKIP.test(part)) return;
+      // Skip entries that are just a number or punctuation
+      if (/^[\d\s.\/\-]+$/.test(part)) return;
+
+      const key = part + '||' + (model || vno);
+      if (!skuMap[key]) {
+        skuMap[key] = { part, model, vmeType, dates: [], amounts: {}, monthCounts: {} };
+      }
+      skuMap[key].dates.push(date);
+      const ym = date.getFullYear() * 100 + (date.getMonth() + 1);
+      skuMap[key].monthCounts[ym] = (skuMap[key].monthCounts[ym] || 0) + 1;
+      if (amt !== null && amt > 0 && amt < 300000) {
+        if (!skuMap[key].amounts[ym]) skuMap[key].amounts[ym] = [];
+        skuMap[key].amounts[ym].push(amt);
+      }
+    });
+  });
+
+  const skus = Object.values(skuMap).map(s => {
+    const totalUses = s.dates.length;
+    if (totalUses < 1) return null;
+
+    const sorted = [...s.dates].sort((a, b) => a - b);
+    const firstDate = sorted[0];
+    // Span in months from first use to today (min 3 months to avoid inflated rates)
+    const spanMonths = Math.max(3, Math.round((today - firstDate) / (30.44 * 86400000)));
+    const monthlyRate = totalUses / spanMonths;
+
+    // Build monthly usage series (filling zeros for inactive months)
+    const monthVals = [];
+    const tmp = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+    for (let i = 0; i < spanMonths; i++) {
+      const ym = tmp.getFullYear() * 100 + (tmp.getMonth() + 1);
+      monthVals.push(s.monthCounts[ym] || 0);
+      tmp.setMonth(tmp.getMonth() + 1);
+    }
+    const mean = monthVals.reduce((a, b) => a + b, 0) / monthVals.length;
+    const variance = monthVals.reduce((a, v) => a + Math.pow(v - mean, 2), 0) / monthVals.length;
+    const stddev = Math.sqrt(variance);
+
+    // Stock level formulas (lead time = 0.5 months ≈ 2 weeks, Z=1.65 for 95% SL)
+    const leadTime = 0.5;
+    const safetyStock = Math.ceil(1.65 * stddev * Math.sqrt(leadTime));
+    const reorderPoint = Math.ceil(monthlyRate * leadTime + safetyStock);
+    const maxStock = Math.ceil(monthlyRate * 2 + safetyStock);
+    const minStock = Math.max(safetyStock, totalUses >= 2 ? 1 : 0);
+
+    // Avg unit cost (flatten all monthly amount arrays)
+    const allAmts = Object.values(s.amounts).flat();
+    const avgCost = allAmts.length ? allAmts.reduce((a, b) => a + b, 0) / allAmts.length : null;
+    const annualValue = avgCost ? monthlyRate * 12 * avgCost : monthlyRate * 12 * 100; // fallback rank by freq
+
+    return { part: s.part, model: s.model, vmeType: s.vmeType, uses: totalUses, monthlyRate, stddev, safetyStock, minStock, reorderPoint, maxStock, avgCost, annualValue, priority: '' };
+  }).filter(Boolean);
+
+  // ABC analysis: sort by annual value descending, assign A/B/C
+  skus.sort((a, b) => b.annualValue - a.annualValue);
+  skus.forEach((s, i) => {
+    const pct = (i + 1) / skus.length;
+    s.priority = pct <= 0.2 ? 'A' : pct <= 0.5 ? 'B' : 'C';
+  });
+
+  D.inventorySkus = skus;
 }
 
 // ══ FILTER BUILD ══
@@ -1573,6 +1735,12 @@ function rRetain(f) {
   </tr>`).join('');
 }
 
+// ══ INVENTORY STATE ══
+let _invSearch = '';
+let _invVme = 'all';
+let _invPri = 'all';
+let _invVmeOpts = [];
+
 // ══ JOB CARDS ══
 let _jcOpenOnly = false;
 
@@ -1732,14 +1900,98 @@ function closeJC() {
   document.body.style.overflow = '';
 }
 
+// ══ INVENTORY RENDER ══
+function rInventory() {
+  const skus = D.inventorySkus || [];
+
+  // Populate VME type select (once)
+  const sel = $('inv-vme-sel');
+  if (sel) {
+    const vmeTypes = [...new Set(skus.map(s => s.vmeType).filter(Boolean))].sort();
+    if (JSON.stringify(vmeTypes) !== JSON.stringify(_invVmeOpts)) {
+      _invVmeOpts = vmeTypes;
+      sel.innerHTML = '<option value="all">All VME types</option>' +
+        vmeTypes.map(t => `<option value="${t}"${_invVme===t?' selected':''}>${t}</option>`).join('');
+    }
+  }
+
+  // Apply local filters
+  const q = (_invSearch || '').toLowerCase().trim();
+  let rows = skus;
+  if (_invVme !== 'all') rows = rows.filter(s => s.vmeType === _invVme);
+  if (_invPri !== 'all') rows = rows.filter(s => s.priority === _invPri);
+  if (q) rows = rows.filter(s =>
+    s.part.includes(q) ||
+    (s.model || '').toLowerCase().includes(q) ||
+    (s.vmeType || '').toLowerCase().includes(q)
+  );
+
+  // KPI values (always from full SKU list, ignoring local filters)
+  const fast = skus.filter(s => s.monthlyRate >= 1).length;
+  const aCount = skus.filter(s => s.priority === 'A').length;
+  const monthlySpend = skus.filter(s => s.avgCost).reduce((t, s) => t + s.monthlyRate * s.avgCost, 0);
+  $('inv-k1').textContent = skus.length.toLocaleString();
+  $('inv-k2').textContent = aCount;
+  $('inv-k3').textContent = fast;
+  $('inv-k4').textContent = monthlySpend > 0 ? fmt(monthlySpend) : '—';
+  $('inv-count').textContent = rows.length.toLocaleString() + ' SKUs';
+
+  if (!rows.length) {
+    $('inv-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--mut);font-size:12px">No items match the current filters.</td></tr>';
+    return;
+  }
+
+  $('inv-tbody').innerHTML = rows.slice(0, 250).map(s => {
+    const priCls = s.priority === 'A' ? 'br2' : s.priority === 'B' ? 'bam' : 'bgr';
+    const rateStr = s.monthlyRate < 0.05 ? '<0.1' : s.monthlyRate < 1 ? s.monthlyRate.toFixed(1) : s.monthlyRate.toFixed(1);
+    // Highlight min stock in amber if it's >= 3 (needs active management)
+    const minStyle = s.minStock >= 3 ? 'color:var(--amb);font-weight:600' : 'color:var(--sub)';
+    const reorderStyle = s.reorderPoint >= 5 ? 'color:var(--acc);font-weight:600' : 'color:var(--sub)';
+    const partDisplay = s.part.length > 36 ? s.part.slice(0, 35) + '…' : s.part;
+    return `<tr>
+      <td style="text-transform:capitalize;max-width:220px" title="${s.part}">${partDisplay}</td>
+      <td style="color:var(--sub)">${s.model || '—'}</td>
+      <td style="color:var(--mut);font-size:11px">${s.vmeType || '—'}</td>
+      <td class="n">${s.uses}</td>
+      <td class="n">${rateStr}</td>
+      <td class="n" style="${minStyle}">${s.minStock}</td>
+      <td class="n" style="${reorderStyle}">${s.reorderPoint}</td>
+      <td class="n">${s.maxStock}</td>
+      <td class="n">${s.avgCost ? fmt(s.avgCost) : '—'}</td>
+      <td><span class="b ${priCls}">${s.priority}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function invSearch(q) {
+  _invSearch = q;
+  rInventory();
+}
+
+function setInvPri(p) {
+  _invPri = p;
+  // Update button states
+  ['all','A','B','C'].forEach(v => {
+    const btn = $('inv-pri-' + v);
+    if (btn) btn.classList.toggle('on', v === p);
+  });
+  rInventory();
+}
+
+function setInvVme(v) {
+  _invVme = v;
+  rInventory();
+}
+
 // ══ PAGE NAV ══
 function showPage(name, btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   $('page-'+name).classList.add('active');
   if(btn) btn.classList.add('active');
-  const titles={overview:'Overview',machines:'Machine health',downtime:'Downtime analysis',costs:'Cost & parts',alerts:'Alerts & actions',retain:'Fleet retention',jobcards:'Job cards'};
+  const titles={overview:'Overview',machines:'Machine health',downtime:'Downtime analysis',costs:'Cost & parts',alerts:'Alerts & actions',retain:'Fleet retention',jobcards:'Job cards',inventory:'Inventory'};
   $('ph').textContent=titles[name]||name;
+  if(name==='inventory') rInventory();
   closeSB();
 }
 
