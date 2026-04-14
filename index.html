@@ -2173,7 +2173,11 @@ function setInvVme(v) {
 
 // ══ SERVICE RENDER ══
 function rService() {
-  const all = (D.serviceSchedule || []).filter(s => showScrapSold || !D.scrapSold.has(s.vno));
+  let all = (D.serviceSchedule || []).filter(s => showScrapSold || !D.scrapSold.has(s.vno));
+  // Apply global filter bar (category, VME type, model)
+  if(!ddIsAll('dd-cat'))   all = all.filter(s => DD_STATE['dd-cat'].includes(s.category));
+  if(!ddIsAll('dd-vme'))   all = all.filter(s => DD_STATE['dd-vme'].includes(s.vmeType));
+  if(!ddIsAll('dd-model')) all = all.filter(s => DD_STATE['dd-model'].includes(s.model));
 
   $('sv-k1').textContent = all.filter(s => s.status === 'overdue').length;
   $('sv-k2').textContent = all.filter(s => s.status === 'due-soon').length;
