@@ -730,8 +730,7 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
           <th>VME No</th><th>Model</th><th>VME Type</th><th>Unit</th>
           <th style="text-align:right">Interval</th>
           <th style="text-align:right">Current Reading</th>
-          <th style="text-align:right">Last Serviced At</th>
-          <th>Last Service Date</th>
+          <th style="text-align:right">Last Service</th>
           <th style="text-align:right">Next Due At</th>
           <th style="text-align:right">Remaining</th>
           <th>Progress</th>
@@ -1358,7 +1357,7 @@ function buildServiceSchedule() {
     const val  = toN(r['Meter Reading']);
     const date = pDate(r['Date']); if(!date) return;
     if(!lastSvcMap[vno] || date > lastSvcMap[vno].date)
-      lastSvcMap[vno] = { val, date };
+      lastSvcMap[vno] = { val, date, jcn: toN(r['Job Card Number']) };
   });
 
   D.serviceSchedule = Object.entries(D.vmeMap)
@@ -1378,6 +1377,7 @@ function buildServiceSchedule() {
       const lastSvc = lastSvcMap[vno] || null;
       const lastSvcVal  = lastSvc?.val  ?? null;
       const lastSvcDate = lastSvc?.date ?? null;
+      const lastSvcJcn  = lastSvc?.jcn  ?? null;
 
       let nextDue = null, remaining = null, pctDone = null;
       let status = 'no-data';
@@ -1392,7 +1392,7 @@ function buildServiceSchedule() {
 
       return { vno, model: ss.model||'', vmeType: ss.vmeType||'', category: ss.category||'',
                svcType: v.svcType, svcInterval: v.svcInterval,
-               curVal, curDate, lastSvcVal, lastSvcDate, nextDue, remaining, pctDone, status,
+               curVal, curDate, lastSvcVal, lastSvcDate, lastSvcJcn, nextDue, remaining, pctDone, status,
                vmStatus: v.status };
     })
     .sort((a, b) => {
@@ -2217,15 +2217,15 @@ function rService() {
       ? `<div style="width:70px;height:6px;background:var(--sur2);border-radius:3px;border:1px solid var(--bor)"><div style="width:${Math.round(pct*100)}%;height:100%;background:${barColor};border-radius:3px"></div></div>`
       : '<span style="color:var(--mut);font-size:10px">—</span>';
 
-    return `<tr>
+    const clickable = s.lastSvcJcn ? `style="cursor:pointer" onclick="openJC(${s.lastSvcJcn})" title="Open job card #${s.lastSvcJcn}"` : '';
+    return `<tr ${clickable}>
       <td style="font-family:var(--mono);font-weight:600;color:var(--acc)">${s.vno}</td>
       <td>${s.model||'—'}</td>
       <td style="color:var(--sub);font-size:11px">${s.vmeType||'—'}</td>
       <td style="color:var(--mut);font-size:11px">${s.svcType}</td>
       <td class="n">${fnum(s.svcInterval)}</td>
       <td class="n">${fnum(s.curVal)}<br><span style="font-size:9px;color:var(--mut);font-family:var(--sans)">${s.curDate?fdate(s.curDate):''}</span></td>
-      <td class="n">${fnum(s.lastSvcVal)}</td>
-      <td style="color:var(--sub);font-size:11px">${fdate(s.lastSvcDate)}</td>
+      <td class="n">${fnum(s.lastSvcVal)}<br><span style="font-size:9px;color:var(--mut);font-family:var(--sans)">${fdate(s.lastSvcDate)}</span></td>
       <td class="n">${fnum(s.nextDue)}</td>
       <td class="n" style="${remStyle}">${remStr}</td>
       <td style="padding-right:10px">${progBar}</td>
