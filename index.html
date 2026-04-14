@@ -834,6 +834,10 @@ const LOC_AREA = {
 
 // Searchable dropdown state (each value is an array; ['all'] means no filter)
 const DD_OPTS  = {};
+// Uppercase-keyed version for lookup (loc is stored uppercase in job cards)
+const LOC_AREA_UC = Object.fromEntries(Object.entries(LOC_AREA).map(([k,v]) => [k.toUpperCase(), v]));
+const locToArea = loc => LOC_AREA_UC[(loc||'').toUpperCase()] || '';
+
 const DD_STATE = { 'dd-cat':['all'], 'dd-vme':['all'], 'dd-model':['all'], 'dd-loc':['all'], 'dd-area':['all'] };
 function ddIsAll(id) { const s=DD_STATE[id]||['all']; return s.length===0||s[0]==='all'; }
 function ddLabel(id) {
@@ -1236,7 +1240,7 @@ function processData() {
       vmeType   : ss.vmeType   || '',
       model     : ss.model     || '',
       loc       : jc.loc       || '',
-      area      : LOC_AREA[jc.loc] || '',
+      area      : locToArea(jc.loc),
       status    : jc.status    || '',
       sup       : jc.sup       || '',
       vmeno     : jc.vmeno     || '',
@@ -2103,7 +2107,7 @@ function rJobCards(f) {
       if(!ddIsAll('dd-vme')   && !DD_STATE['dd-vme'].includes(r.vmeType))         return false;
       if(!ddIsAll('dd-model') && !DD_STATE['dd-model'].includes(r.model))         return false;
       if(!ddIsAll('dd-loc')   && !DD_STATE['dd-loc'].includes(r.loc))             return false;
-      if(!ddIsAll('dd-area')  && !DD_STATE['dd-area'].includes(LOC_AREA[r.loc]||'')) return false;
+      if(!ddIsAll('dd-area')  && !DD_STATE['dd-area'].includes(locToArea(r.loc))) return false;
       if(dateFrom && r.date && r.date < dateFrom) return false;
       if(dateTo   && r.date && r.date > dateTo)   return false;
       return true;
