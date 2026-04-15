@@ -1209,6 +1209,7 @@ function processData() {
       svc   : r['Service Type']||'',
       desc  : (r['Work/Spare Part Description']||'').trim(),
       amt   : toN(r['Amount']),
+      meter : toN(r['Meter Reading']),
       action: parseAction(r['Work/Spare Part Description']||'')
     });
   });
@@ -2236,13 +2237,20 @@ function openVMELogbook(vno) {
   $('drw-jcn').textContent = vno;
   $('drw-vno').textContent = [ss.vmeType, ss.model].filter(Boolean).join(' · ') || '—';
 
+  // Current reading from service schedule
+  const svcEntry = (D.serviceSchedule||[]).find(s => s.vno === vno);
+  const curVal  = svcEntry?.curVal  ?? null;
+  const curDate = svcEntry?.curDate ?? null;
+  const curStr  = curVal !== null ? Math.round(curVal).toLocaleString() + (vm.svcType ? ' ' + vm.svcType : '') : '—';
+  const curDateStr = curDate ? fdate(curDate) : '—';
+
   $('drw-meta').innerHTML = `
     <div class="drw-mf"><div class="drw-ml">Category</div><div class="drw-mv">${ss.category||'—'}</div></div>
     <div class="drw-mf"><div class="drw-ml">VME Type</div><div class="drw-mv">${ss.vmeType||'—'}</div></div>
     <div class="drw-mf"><div class="drw-ml">Model</div><div class="drw-mv">${ss.model||'—'}</div></div>
     <div class="drw-mf"><div class="drw-ml">Status</div><div class="drw-mv">${vm.status||'—'}</div></div>
-    <div class="drw-mf"><div class="drw-ml">Service type</div><div class="drw-mv">${vm.svcType||'—'}</div></div>
-    <div class="drw-mf"><div class="drw-ml">Service interval</div><div class="drw-mv">${vm.svcInterval||'—'}</div></div>
+    <div class="drw-mf"><div class="drw-ml">Service interval</div><div class="drw-mv">${vm.svcInterval ? vm.svcInterval.toLocaleString() + (vm.svcType?' '+vm.svcType:'') : '—'}</div></div>
+    <div class="drw-mf"><div class="drw-ml">Current reading</div><div class="drw-mv" style="font-family:var(--mono);color:var(--acc)">${curStr}<span style="font-size:10px;color:var(--mut);font-weight:400;display:block">${curDateStr}</span></div></div>
   `;
 
   // All job cards for this VME, newest first
@@ -2266,14 +2274,16 @@ function openVMELogbook(vno) {
           const acBadge = ac
             ? `<span class="b ${ac==='R'?'br2':ac==='G'?'bbl':ac==='C'?'bgr':'bam'}">${ACTION_LABELS[ac]||ac}</span>`
             : `<span style="color:var(--mut);font-size:11px">${l.svc||'—'}</span>`;
+          const mtr = l.meter !== null && l.meter > 0 ? Math.round(l.meter).toLocaleString() : '—';
           return `<tr>
             <td style="font-size:11px;color:var(--sub)">${ld}</td>
             <td>${acBadge}</td>
             <td style="font-size:12px">${l.desc||'—'}</td>
+            <td class="n" style="font-family:var(--mono);font-size:11px">${mtr}</td>
             <td class="n" style="font-family:var(--mono);font-size:11px">${amt}</td>
           </tr>`;
         }).join('')
-      : `<tr><td colspan="4" style="text-align:center;padding:10px;color:var(--mut);font-size:11px">No logbook entries.</td></tr>`;
+      : `<tr><td colspan="5" style="text-align:center;padding:10px;color:var(--mut);font-size:11px">No logbook entries.</td></tr>`;
 
     return `
       <div style="margin-bottom:16px">
@@ -2284,7 +2294,7 @@ function openVMELogbook(vno) {
           <span style="color:var(--mut);font-size:11px;margin-left:auto">${lines.length} entr${lines.length!==1?'ies':'y'}</span>
         </div>
         <div class="tw" style="margin:0"><table><thead><tr>
-          <th>Date</th><th>Action</th><th>Description / Part</th><th style="text-align:right">Amount</th>
+          <th>Date</th><th>Action</th><th>Description / Part</th><th style="text-align:right">Meter</th><th style="text-align:right">Amount</th>
         </tr></thead><tbody>${lineRows}</tbody></table></div>
       </div>`;
   }).join('')
