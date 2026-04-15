@@ -699,6 +699,11 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
         Max stock = 2 months demand + safety stock.
         Priority A/B/C = top 20% / next 30% / remaining 50% by annual usage value (frequency × avg cost).
       </div>
+      <div class="card" style="margin-top:16px">
+        <div class="ct">Critical spares by model</div>
+        <div class="cs">A-priority parts per machine model · top 20% by annual usage value</div>
+        <div id="inv-model-list"></div>
+      </div>
     </div>
 
     <!-- ══ JOB CARDS ══ -->
@@ -727,11 +732,12 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
 
     <!-- ══ SERVICE ══ -->
     <div class="page" id="page-service">
-      <div class="kg c4">
+      <div class="kg c5">
         <div class="kpi"><div class="kt" style="background:var(--red)"></div><div class="kl">Overdue</div><div class="kv" style="color:var(--red)" id="sv-k1">—</div><div class="kd">past service interval</div></div>
         <div class="kpi"><div class="kt" style="background:var(--amb)"></div><div class="kl">Due soon</div><div class="kv" style="color:var(--amb)" id="sv-k2">—</div><div class="kd">within 10% of interval</div></div>
         <div class="kpi"><div class="kt" style="background:var(--grn)"></div><div class="kl">Up to date</div><div class="kv" style="color:var(--grn)" id="sv-k3">—</div><div class="kd">within service interval</div></div>
         <div class="kpi"><div class="kt" style="background:var(--sub)"></div><div class="kl">No reading data</div><div class="kv" id="sv-k4">—</div><div class="kd">reading not yet recorded</div></div>
+        <div class="kpi"><div class="kt" style="background:var(--acc)"></div><div class="kl">Serviced on time</div><div class="kv" style="color:var(--acc)" id="sv-k5">—</div><div class="kd">of machines with data</div></div>
       </div>
       <div class="jc-toolbar" style="margin-bottom:10px">
         <input class="jc-search" id="sv-search" type="search" placeholder="Search VME No, model, VME type…" oninput="svcSearch(this.value)">
@@ -757,7 +763,7 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
       </div>
       <div class="inv-note">
         Current reading is taken from the Current Reading (VME) sheet or the logbook — whichever has the more recent entry.
-        Last service is the most recent logbook entry whose description consists entirely of action-coded items (R-/C-/T-/G-/A-) — the standard service checklist format.
+        Last service is the most recent logbook entry where Service Type = "Service".
         Due soon = within 10% of the service interval remaining.
       </div>
     </div>
@@ -1416,13 +1422,12 @@ function buildServiceSchedule() {
       latestJcnMap[vno] = { jcn, date };
   });
 
-  // Last SERVICE entry per VME from logbook — identified by all description items
-  // having action-code prefixes (R-/C-/T-/G-/A-), not by Service Type column
+  // Last SERVICE entry per VME from logbook (Service Type = "Service")
   const lastSvcMap = {};
   RAW.db.forEach(r => {
-    const vno  = (r['Veh/Mach/Equip No']||'').trim(); if(!vno) return;
-    const desc = (r['Work/Spare Part Description']||'').trim();
-    if(!isServiceRow(desc)) return;
+    const vno = (r['Veh/Mach/Equip No']||'').trim(); if(!vno) return;
+    const svc = (r['Service Type']||'').trim().toUpperCase();
+    if(svc !== 'SERVICE') return;
     const val  = toN(r['Meter Reading']);
     const date = pDate(r['Date']); if(!date) return;
     if(!lastSvcMap[vno] || date > lastSvcMap[vno].date)
@@ -2293,6 +2298,41 @@ function rInventory() {
       <td><span class="b ${priCls}">${s.priority}</span></td>
     </tr>`;
   }).join('');
+
+  // Critical spares by model — A-priority items only, from filtered rows
+  const modelGroups = {};
+  rows.filter(s => s.priority === 'A').forEach(s => {
+    const key = s.model || '(no model)';
+    if(!modelGroups[key]) modelGroups[key] = { model: key, vmeType: s.vmeType || '', parts: [] };
+    modelGroups[key].parts.push(s);
+  });
+  const modelList = Object.values(modelGroups)
+    .sort((a,b) => b.parts.length - a.parts.length);
+
+  const modelEl = $('inv-model-list');
+  if(modelEl) {
+    modelEl.innerHTML = modelList.length ? modelList.map(mg => `
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;font-weight:600;color:var(--txt);font-family:var(--mono);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--bor);display:flex;align-items:center;gap:8px">
+          <span>${mg.model}</span>
+          <span style="color:var(--mut);font-weight:400">${mg.vmeType}</span>
+          <span class="b br2" style="margin-left:auto">${mg.parts.length} critical part${mg.parts.length!==1?'s':''}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${mg.parts.sort((a,b) => b.uses - a.uses).map(s => `
+            <div style="background:var(--sur2);border:1px solid var(--bor);border-radius:var(--rs);padding:7px 11px;min-width:140px">
+              <div style="font-size:11px;text-transform:capitalize;color:var(--txt);font-weight:500">${s.part.length>32?s.part.slice(0,31)+'…':s.part}</div>
+              <div style="color:var(--mut);font-family:var(--mono);font-size:10px;margin-top:3px;display:flex;gap:8px">
+                <span title="Total uses">${s.uses}×</span>
+                <span title="Monthly rate">${s.monthlyRate<0.05?'<0.1':s.monthlyRate.toFixed(1)}/mo</span>
+                <span title="Min stock to hold" style="color:var(--amb);font-weight:600">min ${s.minStock}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`).join('')
+    : '<div style="color:var(--mut);font-size:12px;padding:8px 0">No A-priority items in the current filter.</div>';
+  }
 }
 
 function invSearch(q) {
@@ -2323,10 +2363,17 @@ function rService() {
   if(!ddIsAll('dd-vme'))   all = all.filter(s => DD_STATE['dd-vme'].includes(s.vmeType));
   if(!ddIsAll('dd-model')) all = all.filter(s => DD_STATE['dd-model'].includes(s.model));
 
-  $('sv-k1').textContent = all.filter(s => s.status === 'overdue').length;
-  $('sv-k2').textContent = all.filter(s => s.status === 'due-soon').length;
-  $('sv-k3').textContent = all.filter(s => s.status === 'ok').length;
-  $('sv-k4').textContent = all.filter(s => s.status === 'no-data').length;
+  const nOverdue  = all.filter(s => s.status === 'overdue').length;
+  const nDueSoon  = all.filter(s => s.status === 'due-soon').length;
+  const nOk       = all.filter(s => s.status === 'ok').length;
+  const nNoData   = all.filter(s => s.status === 'no-data').length;
+  const nWithData = nOverdue + nDueSoon + nOk;
+  const pctOnTime = nWithData > 0 ? Math.round(nOk / nWithData * 100) : null;
+  $('sv-k1').textContent = nOverdue;
+  $('sv-k2').textContent = nDueSoon;
+  $('sv-k3').textContent = nOk;
+  $('sv-k4').textContent = nNoData;
+  $('sv-k5').innerHTML   = pctOnTime !== null ? pctOnTime + '<span class="ku">%</span>' : '—';
 
   const q = (_svcSearch || '').toLowerCase().trim();
   let rows = all;
