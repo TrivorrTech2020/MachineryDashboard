@@ -1056,7 +1056,7 @@ async function _resolveSheetName(spreadsheetId, gid) {
 function _parseCSV(t) {
   const lines = t.trim().split('\n'), hdr = _csvRow(lines[0]);
   return lines.slice(1)
-    .map(l => { const v=_csvRow(l),o={}; hdr.forEach((h,i)=>o[h.trim()]=(v[i]||'').trim()); return o; })
+    .map(l => { const v=_csvRow(l),o={}; hdr.forEach((h,i)=>{ const k=h.trim(); if(k&&!(k in o)) o[k]=(v[i]||'').trim(); }); return o; })
     .filter(r => Object.values(r).some(v=>v));
 }
 function _csvRow(l) {
