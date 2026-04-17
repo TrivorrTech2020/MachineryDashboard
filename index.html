@@ -2285,11 +2285,12 @@ function openVMELogbook(vno) {
   // Fallback: if JC has no STARTING DATE, use latest date from its logbook entries
   const jcFallbackDate = jcnStr => (D.lbIdx[String(jcnStr)]||[]).reduce((mx, e) => (!e.date ? mx : (!mx || e.date > mx ? e.date : mx)), null);
 
-  // JCS-backed rows (from job card status sheet)
+  // JCS-backed rows visible through current filters
   const jcsRows = _jcRows.filter(r => r.vno === vno);
-  const jcsJcnSet = new Set(jcsRows.map(r => String(r.jcn)));
+  // Use D.jcMap (unfiltered) to determine which JCNs truly exist in the JCS sheet
+  const jcsJcnSet = new Set(Object.keys(D.jcMap).map(String));
 
-  // Logbook-only rows: O-prefixed historical JCNs not present in JCS sheet
+  // Logbook-only rows: JCNs not in JCS sheet at all (e.g. O-prefixed historical ones)
   const allLbJcns = D.vmeJcnIdx[vno] || [];
   const extraRows = allLbJcns
     .filter(jcnStr => !jcsJcnSet.has(jcnStr))
