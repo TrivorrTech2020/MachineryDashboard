@@ -811,7 +811,7 @@ const VME_GID = '1293626573';     // VME master tab
 const CR_GID  = '421078060';      // Current Reading (VME) tab
 
 let RAW = { db:[], ss:[], jcs:[], vme:[], cr:[] };
-let D   = { repairs:[], parts:[], ssMap:{}, vmeMap:{}, jcMap:{}, lbIdx:{}, scrapSold:new Set(), inventorySkus:[], serviceSchedule:[] };
+let D   = { repairs:[], parts:[], ssMap:{}, vmeMap:{}, jcMap:{}, lbIdx:{}, vmeJcnIdx:{}, scrapSold:new Set(), inventorySkus:[], serviceSchedule:[] };
 let _jcRows = [];
 let showScrapSold = false;
 // Date range state
@@ -1212,9 +1212,12 @@ function processData() {
   D.jcMap = jcMap;
 
   // Build logbook index by job card number (for drawer)
+  // Uses raw string keys so O-prefixed historical JCNs (e.g. "O1234") are preserved
   const lbIdx = {};
+  const vmeJcnIdx = {}; // vme → [string JCNs] for all logbook history
   RAW.db.forEach(r => {
-    const jcn = toN(r['Job Card Number']); if(!jcn) return;
+    const jcn = (r['Job Card Number']||'').trim(); if(!jcn) return;
+    const vno = (r['Veh/Mach/Equip No']||'').trim();
     if(!lbIdx[jcn]) lbIdx[jcn] = [];
     lbIdx[jcn].push({
       date  : pDate(r['Date']),
@@ -1224,8 +1227,13 @@ function processData() {
       meter : toN(r['Meter Reading']),
       action: parseAction(r['Work/Spare Part Description']||'')
     });
+    if(vno) {
+      if(!vmeJcnIdx[vno]) vmeJcnIdx[vno] = [];
+      if(!vmeJcnIdx[vno].includes(jcn)) vmeJcnIdx[vno].push(jcn);
+    }
   });
   D.lbIdx = lbIdx;
+  D.vmeJcnIdx = vmeJcnIdx;
 
   // Aggregate logbook by job card
   const grp = {};
@@ -1436,15 +1444,23 @@ function buildServiceSchedule() {
   });
 
   // Last SERVICE entry per VME from logbook (Service Type = "Service")
+  // Build a JCS starting-date map as fallback for logbook rows with no Date
+  const jcsDateMap = {};
+  RAW.jcs.forEach(r => { const n = toN(r['Job Card No']); if(n) jcsDateMap[n] = pDate(r['STARTING DATE']||r['STARTING DATE ']); });
+
   const lastSvcMap = {};
   RAW.db.forEach(r => {
     const vno = (r['Veh/Mach/Equip No']||'').trim(); if(!vno) return;
     const svc = (r['Service Type']||'').trim().toUpperCase();
     if(svc !== 'SERVICE') return;
     const val  = toN(r['Meter Reading']);
-    const date = pDate(r['Date']); if(!date) return;
+    const jcnRaw = (r['Job Card Number']||'').trim();
+    const jcn  = toN(jcnRaw) || jcnRaw || null;  // keep string for O-prefixed JCNs
+    const jcnNum = toN(jcnRaw);
+    const date = pDate(r['Date']) || (jcnNum ? jcsDateMap[jcnNum] : null);
+    if(!date) return;
     if(!lastSvcMap[vno] || date > lastSvcMap[vno].date)
-      lastSvcMap[vno] = { val, date, jcn: toN(r['Job Card Number']) };
+      lastSvcMap[vno] = { val, date, jcn };
   });
 
   D.serviceSchedule = Object.entries(D.vmeMap)
@@ -2205,7 +2221,7 @@ function openJC(jcn) {
     <div class="drw-mf"><div class="drw-ml">Service type</div><div class="drw-mv">${r.svc||'—'}</div></div>
   `;
 
-  const lines = D.lbIdx[jcn] || [];
+  const lines = D.lbIdx[String(jcn)] || [];
   const lineRows = lines.length
     ? lines.map(l => {
         const amt = l.amt && l.amt > 0 ? fmt(l.amt) : '—';
@@ -2266,15 +2282,31 @@ function openVMELogbook(vno) {
   `;
 
   // All job cards for this VME, newest first
-  const vnoJcs = _jcRows
-    .filter(r => r.vno === vno)
-    .sort((a,b) => (b.date||0) - (a.date||0));
+  // Fallback: if JC has no STARTING DATE, use latest date from its logbook entries
+  const jcFallbackDate = jcnStr => (D.lbIdx[String(jcnStr)]||[]).reduce((mx, e) => (!e.date ? mx : (!mx || e.date > mx ? e.date : mx)), null);
+
+  // JCS-backed rows (from job card status sheet)
+  const jcsRows = _jcRows.filter(r => r.vno === vno);
+  const jcsJcnSet = new Set(jcsRows.map(r => String(r.jcn)));
+
+  // Logbook-only rows: O-prefixed historical JCNs not present in JCS sheet
+  const allLbJcns = D.vmeJcnIdx[vno] || [];
+  const extraRows = allLbJcns
+    .filter(jcnStr => !jcsJcnSet.has(jcnStr))
+    .map(jcnStr => {
+      const entries = D.lbIdx[jcnStr] || [];
+      const latestDate = entries.reduce((mx, e) => (!e.date ? mx : (!mx || e.date > mx ? e.date : mx)), null);
+      return { jcn: jcnStr, vno, status: '', date: latestDate, _logbookOnly: true };
+    });
+
+  const vnoJcs = [...jcsRows, ...extraRows]
+    .sort((a,b) => (b.date || jcFallbackDate(b.jcn) || 0) - (a.date || jcFallbackDate(a.jcn) || 0));
 
   let totalEntries = 0;
   const bodyHtml = vnoJcs.length ? vnoJcs.map(r => {
-    const lines = D.lbIdx[r.jcn] || [];
+    const lines = D.lbIdx[String(r.jcn)] || [];
     totalEntries += lines.length;
-    const jc = D.jcMap[r.jcn] || {};
+    const jc = D.jcMap[+r.jcn] || {};
     const stat = (r.status||'').toLowerCase();
     const sc = stat==='open'?'bam':stat==='closed'||stat==='complete'?'bgr':'bbl';
 
@@ -2297,14 +2329,23 @@ function openVMELogbook(vno) {
         }).join('')
       : `<tr><td colspan="5" style="text-align:center;padding:10px;color:var(--mut);font-size:11px">No logbook entries.</td></tr>`;
 
+    const jcHeader = r._logbookOnly
+      ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bor);margin-bottom:6px">
+           <span style="font-family:var(--mono);font-weight:600;color:var(--sub);font-size:12px">JC #${r.jcn}</span>
+           <span class="b bbl" style="font-size:10px">Historical</span>
+           <span style="color:var(--mut);font-size:11px;margin-left:2px">${fdate(r.date)}</span>
+           <span style="color:var(--mut);font-size:11px;margin-left:auto">${lines.length} entr${lines.length!==1?'ies':'y'}</span>
+         </div>`
+      : `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bor);margin-bottom:6px;cursor:pointer" onclick="openJC(${r.jcn})" title="Open full job card">
+           <span style="font-family:var(--mono);font-weight:600;color:var(--acc);font-size:12px">JC #${r.jcn}</span>
+           <span class="b ${sc}" style="font-size:10px">${r.status||'—'}</span>
+           <span style="color:var(--mut);font-size:11px;margin-left:2px">${fdate(jc.start||r.date)}</span>
+           <span style="color:var(--mut);font-size:11px;margin-left:auto">${lines.length} entr${lines.length!==1?'ies':'y'}</span>
+         </div>`;
+
     return `
       <div style="margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bor);margin-bottom:6px;cursor:pointer" onclick="openJC(${r.jcn})" title="Open full job card">
-          <span style="font-family:var(--mono);font-weight:600;color:var(--acc);font-size:12px">JC #${r.jcn}</span>
-          <span class="b ${sc}" style="font-size:10px">${r.status||'—'}</span>
-          <span style="color:var(--mut);font-size:11px;margin-left:2px">${fdate(jc.start||r.date)}</span>
-          <span style="color:var(--mut);font-size:11px;margin-left:auto">${lines.length} entr${lines.length!==1?'ies':'y'}</span>
-        </div>
+        ${jcHeader}
         <div class="tw" style="margin:0"><table><thead><tr>
           <th>Date</th><th>Action</th><th>Description / Part</th><th style="text-align:right">Meter</th><th style="text-align:right">Amount</th>
         </tr></thead><tbody>${lineRows}</tbody></table></div>
