@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>SGF Workshop Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async onload="onGISLoad()"></script>
 <style>
 html{zoom:1.15}
 :root{
@@ -285,12 +284,9 @@ tbody tr:hover td{background:rgba(0,0,0,.025)}
     <div class="auth-logo-row"><div class="auth-ldot"></div><div class="auth-brand">SGF Workshop</div></div>
     <div class="auth-sub">Maintenance Dashboard</div>
     <div class="auth-divider"></div>
-    <button class="btn-google" id="btn-google" onclick="signIn()" disabled>
-      <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
-      Sign in with Google
-    </button>
+    <div id="auth-checking" style="color:var(--mut);font-size:13px;font-family:var(--mono);padding:8px 0">Checking access…</div>
     <div class="auth-error" id="auth-error"></div>
-    <div class="auth-hint">Access is restricted to authorised accounts only.<br>Sign in with your SGF Workshop Google account.</div>
+    <div class="auth-hint" id="auth-hint" style="display:none">Open this app from the SGF Portal to sign in automatically.</div>
   </div>
 </div>
 
@@ -968,92 +964,71 @@ function toggleSB(){ $('sb').classList.toggle('open'); $('ov').classList.toggle(
 function closeSB(){ $('sb').classList.remove('open'); $('ov').classList.remove('show'); }
 
 // ══ AUTH ══
-let _tokenClient = null;
-let _accessToken = null;
-let _tokenExpiry  = 0;
-let _sheetMeta    = {};   // spreadsheetId → { gid: sheetName }
+const MACHINERY_SESSION_KEY = 'machinery_session';
 
-function onGISLoad() {
-  _tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id : OAUTH_CLIENT_ID,
-    scope     : 'https://www.googleapis.com/auth/spreadsheets.readonly',
-    callback  : _handleToken,
-  });
-  // If user has signed in before, attempt silent token refresh (no popup)
-  if(localStorage.getItem('sgf_authed') === '1') {
-    _tokenClient.requestAccessToken({ prompt: '' });
-    // Show button as fallback if silent auth doesn't respond in 4s
-    setTimeout(() => { if(!_accessToken) $('btn-google').disabled = false; }, 4000);
-  } else {
-    $('btn-google').disabled = false;
-  }
+function showAuthError(msg) {
+  $('auth-checking').style.display = 'none';
+  $('auth-hint').style.display = 'block';
+  const el = $('auth-error');
+  el.textContent = msg;
+  el.classList.add('show');
 }
 
-function _handleToken(resp) {
-  if(resp.error) {
-    // Silent refresh failed — clear flag and show login button
-    localStorage.removeItem('sgf_authed');
-    if(resp.error !== 'user_logged_out' && resp.error !== 'immediate_failed') {
-      showAuthError('Sign-in failed: ' + resp.error);
-    }
-    $('btn-google').disabled = false;
-    return;
-  }
-  _accessToken = resp.access_token;
-  _tokenExpiry  = Date.now() + (resp.expires_in - 60) * 1000;
-  localStorage.setItem('sgf_authed', '1');
+function signOut() {
+  localStorage.removeItem(MACHINERY_SESSION_KEY);
+  location.reload();
+}
+
+function _grantAccess() {
   $('auth-screen').classList.add('hidden');
   loadData();
 }
 
-function signIn() {
-  if(!_tokenClient){ showAuthError('Google Sign-In library not loaded yet — please wait and try again.'); return; }
-  $('btn-google').disabled = true;
-  _tokenClient.requestAccessToken({ prompt: 'select_account' });
-  setTimeout(() => { $('btn-google').disabled = false; }, 3000);
-}
+(async function initAuth() {
+  const urlToken = new URLSearchParams(window.location.search).get('token');
 
-function showAuthError(msg) {
-  const el = $('auth-error');
-  el.textContent = msg;
-  el.classList.add('show');
-  $('btn-google').disabled = false;
-}
-
-function signOut() {
-  localStorage.removeItem('sgf_authed');
-  _accessToken = null;
-  google.accounts.oauth2.revoke(_accessToken, () => {});
-  location.reload();
-}
-
-async function _ensureToken() {
-  if(_accessToken && Date.now() < _tokenExpiry) return;
-  // Silent refresh (no prompt if user is already signed in this session)
-  return new Promise((resolve, reject) => {
-    const prev = _tokenClient.callback;
-    _tokenClient.callback = (resp) => {
-      _tokenClient.callback = prev;
-      if(resp.error){ reject(new Error(resp.error)); return; }
-      _accessToken = resp.access_token;
-      _tokenExpiry  = Date.now() + (resp.expires_in - 60) * 1000;
-      resolve();
-    };
-    _tokenClient.requestAccessToken({ prompt: '' });
-  });
-}
-
-async function _resolveSheetName(spreadsheetId, gid) {
-  if(!_sheetMeta[spreadsheetId]) {
-    const url  = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties(sheetId,title)`;
-    const resp = await fetch(url, { headers: { Authorization: `Bearer ${_accessToken}` } });
-    const json = await resp.json();
-    if(json.error) throw new Error(json.error.code === 403 ? 'ACCESS_DENIED' : json.error.message);
-    _sheetMeta[spreadsheetId] = {};
-    (json.sheets || []).forEach(s => { _sheetMeta[spreadsheetId][s.properties.sheetId] = s.properties.title; });
+  if (urlToken) {
+    // Arrived from portal — exchange token for session
+    try {
+      const res = await fetch('/api/portal-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: urlToken }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        localStorage.setItem(MACHINERY_SESSION_KEY, data.session);
+        // Remove token from URL without reload
+        window.history.replaceState({}, '', window.location.pathname);
+        _grantAccess();
+        return;
+      }
+      showAuthError('Sign-in failed — the link may have already been used. Return to the portal and try again.');
+    } catch {
+      showAuthError('Could not reach authentication server.');
+    }
+    return;
   }
-  return _sheetMeta[spreadsheetId][parseInt(gid)];
-}
+
+  // No URL token — check existing session in localStorage
+  const stored = localStorage.getItem(MACHINERY_SESSION_KEY);
+  if (stored) {
+    try {
+      const res = await fetch('/api/verify-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: stored }),
+      });
+      const data = await res.json();
+      if (data.ok) { _grantAccess(); return; }
+    } catch { /* fall through to denied */ }
+    localStorage.removeItem(MACHINERY_SESSION_KEY);
+  }
+
+  // No valid session — show access denied
+  $('auth-checking').style.display = 'none';
+  $('auth-hint').style.display = 'block';
+}());
 
 // ══ FETCH ══
 // Open-access path (sheets must be public)
@@ -1075,21 +1050,7 @@ async function _fetchCSV(id, gid) {
   return _parseCSV(await r.text());
 }
 
-// Authenticated path (sheets can be restricted)
-async function fetchSheet(id, gid) {
-  await _ensureToken();
-  const sheetName = await _resolveSheetName(id, gid);
-  if(!sheetName) throw new Error(`Sheet GID ${gid} not found in spreadsheet ${id}`);
-  const url  = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(sheetName)}`;
-  const resp = await fetch(url, { headers: { Authorization: `Bearer ${_accessToken}` } });
-  const json = await resp.json();
-  if(json.error) throw new Error(json.error.code === 403 ? 'ACCESS_DENIED' : json.error.message);
-  const [headers, ...rows] = json.values || [[]];
-  return rows.map(row => Object.fromEntries((headers || []).map((h, i) => [h.trim(), (row[i] ?? '').trim()])));
-}
-
-// Unified dispatcher used by loadData / refreshData
-// Auth controls dashboard access; data always fetched via public CSV links
+// Data always fetched via public CSV (sheet is publicly readable)
 const fetchData = (id, gid) => _fetchCSV(id, gid);
 
 async function refreshData() {
